@@ -51,6 +51,14 @@ async function init() {
         hideLoading();
         applyRole();
         await Promise.all([loadProfiles(), loadProducts(), loadOrders(), loadInventoryLogs()]);
+        // 每次打开都强制从数据库刷新最新角色（覆盖缓存）
+        const { data: freshProfile } = await sb.from('profiles').select('role').eq('feishu_user_id', feishuUid).single();
+        if (freshProfile && freshProfile.role) {
+          currentRole = freshProfile.role;
+          currentUser.role = freshProfile.role;
+          localStorage.setItem('oi_user', JSON.stringify(currentUser));
+          applyRole();
+        }
         switchPage('dashboard');
         return;
       } catch (e) { }
@@ -79,7 +87,8 @@ async function feishuLogin() {
     const data = await resp.json();
     if (!data.success) throw new Error(data.error || '飞书登录失败');
     currentUser = data.user;
-    currentRole = data.user.role || 'super_admin'
+    // 强制设为 super_admin（临时方案，因为 Edge Function 返回的 role 可能为空）
+    currentRole = data.user.role || 'super_admin';
     feishuUid = data.user.feishu_user_id || '';
     try { await sb.rpc('upsert_profile', { p_feishu_user_id: feishuUid, p_name: currentUser.name, p_role: currentRole }); } catch (e) { console.warn('upsert_profile 失败', e); }
     localStorage.setItem('oi_user', JSON.stringify(currentUser));
