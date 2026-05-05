@@ -1,5 +1,47 @@
 // app.js - 订单与库存管理系统
 
+// ============ 模糊匹配产品 ============
+function fuzzyFindProduct(name, sku) {
+  if (!name && !sku) return null;
+  const n = (name || '').trim().toLowerCase();
+  const s = (sku || '').trim().toLowerCase();
+  // 1. 精确匹配名称
+  let found = allProducts.find(x => (x.name || '').toLowerCase() === n);
+  if (found) return { product: found, method: '精确名称' };
+  // 2. 精确匹配规格
+  if (s) {
+    found = allProducts.find(x => (x.sku || '').toLowerCase() === s);
+    if (found) return { product: found, method: '精确规格' };
+  }
+  // 3. 名称模糊匹配（n在名称中，或名称在n中）
+  let candidates = [];
+  if (n) {
+    candidates = allProducts.filter(x => {
+      const xn = (x.name || '').toLowerCase();
+      return xn.includes(n) || n.includes(xn);
+    });
+  }
+  // 4. 规格模糊匹配（如果名称没匹配到）
+  if (candidates.length === 0 && s) {
+    candidates = allProducts.filter(x => {
+      const xs = (x.sku || '').toLowerCase();
+      return xs.includes(s) || s.includes(xs);
+    });
+  }
+  // 5. 名称+规格组合匹配
+  if (candidates.length === 0 && n && s) {
+    candidates = allProducts.filter(x => {
+      const xn = (x.name || '').toLowerCase();
+      const xs = (x.sku || '').toLowerCase();
+      return xn.includes(n) || n.includes(xn) || xs.includes(s) || s.includes(xs);
+    });
+  }
+  if (candidates.length === 1) return { product: candidates[0], method: '模糊匹配' };
+  if (candidates.length > 1) return { product: candidates, method: 'multiple' };
+  return null;
+}
+
+
 // ============ 配置 ============
 const SUPABASE_URL = 'https://pvrfqnffygusujsnxsct.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cmZxbmZmeWd1c3Vqc254c2N0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MTI3ODYsImV4cCI6MjA5MzQ4ODc4Nn0.BraQWWOse2ikRGb02_PEgqV3b0Umdch9ugMqoBe7jio';
@@ -241,7 +283,7 @@ function renderInventory() {
   const filtered = kw ? allProducts.filter(p => (p.name || '').toLowerCase().includes(kw) || (p.sku || '').toLowerCase().includes(kw)) : allProducts;
   const isAdmin = ['super_admin', 'admin'].includes(currentRole);
   let head = '<tr>';
-  ['产品名称', 'SKU', '当前库存', '预警阈值', '单位', '更新时间', isAdmin ? '操作' : ''].forEach(h => { head += `<th class="px-4 py-3 text-left font-medium">${h}</th>`; });
+  ['产品名称', '规格', '当前库存', '预警阈值', '单位', '更新时间', isAdmin ? '操作' : ''].forEach(h => { head += `<th class="px-4 py-3 text-left font-medium">${h}</th>`; });
   head += '</tr>';
   document.getElementById('inventory-head').innerHTML = head;
   if (filtered.length === 0) { document.getElementById('inventory-body').innerHTML = ''; document.getElementById('inventory-empty').classList.remove('hidden'); return; }
@@ -444,20 +486,36 @@ async function handleBatchOrderPaste() {
   const previewHead = document.getElementById('batch-order-head');
   const previewDiv = document.getElementById('batch-order-preview');
   const errorsDiv = document.getElementById('batch-order-errors');
-  const headers = ['客户姓名', '联系电话', '收货地址', '产品名称', '数量', '单价', '备注'];
+  const headers = ['客户姓名', '联系电话', '收货地址', '产品名称', '规格', '数量', '单价', '备注'];
   previewHead.innerHTML = '<tr>' + headers.map(h => `<th class="px-2 py-1 text-left bg-gray-50">${h}</th>`).join('') + '</tr>';
   const results = [];
   const errors = [];
   for (let i = 0; i < lines.length; i++) {
     const cols = lines[i].split(/[,\uff0c]/).map(c => c.trim());
     if (cols.length < 4) { errors.push(`第${i + 1}行：格式错误，至少需要4列`); continue; }
-    const pName = cols[3];
-    const product = allProducts.find(x => x.name === pName);
-    if (!product) { errors.push(`第${i + 1}行：产品"${pName}"不存在`); continue; }
-    results.push({ customer_name: cols[0], customer_phone: cols[1] || '', customer_address: cols[2] || '', product_name: pName, product_id: product.id, quantity: parseInt(cols[4]) || 1, unit_price: parseFloat(cols[5]) || 0, remark: cols[6] || '' });
+    const pName = cols[3] || '';
+    const pSpec = (cols.length >= 5 ? cols[4] : '');
+    const qtyIdx = cols.length >= 6 ? 5 : 4;
+    const priceIdx = cols.length >= 7 ? 6 : (cols.length >= 6 ? 5 : -1);
+    const remarkIdx = cols.length >= 8 ? 7 : (cols.length >= 7 ? 6 : (cols.length >= 6 ? 5 : -1));
+    // 模糊匹配产品
+    const match = fuzzyFindProduct(pName, pSpec);
+    if (!match) { errors.push(`第${i + 1}行：产品"${pName}"${pSpec ? '/' + pSpec : ''}未找到`); continue; }
+    if (match.method === 'multiple') {
+      const names = match.product.map(x => x.name + (x.sku ? '(' + x.sku + ')' : '')).join('、');
+      errors.push(`第${i + 1}行：匹配到多个产品（${names}），请更精确地指定名称或规格`); continue;
+    }
+    const product = match.product;
+    const quantity = parseInt(cols[qtyIdx]) || 1;
+    const unitPrice = priceIdx >= 0 ? (parseFloat(cols[priceIdx]) || 0) : 0;
+    const remark = remarkIdx >= 0 ? cols[remarkIdx] : '';
+    results.push({ customer_name: cols[0], customer_phone: cols[1] || '', customer_address: cols[2] || '', product_name: product.name, product_sku: product.sku || '', product_id: product.id, quantity, unit_price: unitPrice, remark: (match.method === '模糊匹配' ? '[模糊]' : '') + (remark || '') });
   }
   if (results.length > 0) {
-    previewBody.innerHTML = results.slice(0, 5).map(r => `<tr class="border-b border-gray-50">${headers.map((_, i) => { const v = [r.customer_name, r.customer_phone, r.customer_address, r.product_name, r.quantity, r.unit_price, r.remark][i]; return `<td class="px-2 py-1">${esc(v !== undefined ? v : '')}</td>`; }).join('')}</tr>`).join('');
+    previewBody.innerHTML = results.slice(0, 5).map(r => {
+      const vals = [r.customer_name, r.customer_phone, r.customer_address, r.product_name, r.product_sku, r.quantity, r.unit_price, r.remark];
+      return `<tr class="border-b border-gray-50">${headers.map((_, i) => `<td class="px-2 py-1">${esc(vals[i] !== undefined ? vals[i] : '')}</td>`).join('')}</tr>`;
+    }).join('');
     previewDiv.classList.remove('hidden');
   }
   document.getElementById('batch-order-count').textContent = `解析到 ${results.length} 条，共 ${lines.length} 行`;
@@ -580,7 +638,7 @@ async function handleBatchProductPaste() {
   // 显示预览
   const head = document.getElementById('batch-product-head');
   const body = document.getElementById('batch-product-body');
-  head.innerHTML = '<tr>' + ['产品名称','SKU','库存','预警阈值','单位'].map(h => '<th class="px-2 py-1 text-left">' + h + '</th>').join('') + '</tr>';
+  head.innerHTML = '<tr>' + ['产品名称','规格','库存','预警阈值','单位'].map(h => '<th class="px-2 py-1 text-left">' + h + '</th>').join('') + '</tr>';
   body.innerHTML = products.map(p => '<tr class="border-b border-gray-100">' +
     [p.name, p.sku, p.stock, p.alert, p.unit].map(v => '<td class="px-2 py-1">' + esc(v) + '</td>').join('') + '</tr>').join('');
   document.getElementById('batch-product-count').textContent = '共 ' + products.length + ' 条，点击"确认导入"写入数据库';
