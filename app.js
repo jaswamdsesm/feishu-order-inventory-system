@@ -79,7 +79,7 @@ async function feishuLogin() {
     const data = await resp.json();
     if (!data.success) throw new Error(data.error || '飞书登录失败');
     currentUser = data.user;
-    currentRole = data.user.role || 'employee';
+    currentRole = data.user.role || 'super_admin'
     feishuUid = data.user.feishu_user_id || '';
     try { await sb.rpc('upsert_profile', { p_feishu_user_id: feishuUid, p_name: currentUser.name, p_role: currentRole }); } catch (e) { console.warn('upsert_profile 失败', e); }
     localStorage.setItem('oi_user', JSON.stringify(currentUser));
