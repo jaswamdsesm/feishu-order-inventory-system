@@ -187,8 +187,8 @@ function showToast(msg, type) {
   document.body.appendChild(t);
   setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .4s'; setTimeout(() => t.remove(), 400); }, 2500);
 }
-function openModal(id) { const e = document.getElementById(id); if (e) { e.classList.remove('hidden'); e.classList.add('active'); } }
-function closeModal(id) { const e = document.getElementById(id); if (e) { e.classList.add('hidden'); e.classList.remove('active'); } }
+function openModal(id) { const e = document.getElementById(id); if (e) { e.classList.remove('hidden'); e.classList.add('flex', 'active'); } }
+function closeModal(id) { const e = document.getElementById(id); if (e) { e.classList.add('hidden'); e.classList.remove('flex', 'active'); } }
 function genOrderNo() {
   const d = new Date();
   const ds = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
