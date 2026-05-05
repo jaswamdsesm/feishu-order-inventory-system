@@ -67,7 +67,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
       <div><p class="font-bold text-sm">订单库存</p><p class="text-[10px] text-gray-400">Order & Inventory</p></div>
     </div>
     <nav class="flex-1 py-4 overflow-y-auto">
-      <p class="px-5 text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">菜单</p>
+      <p class="px-5 text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">菜单</p>
       <button onclick="switchPage('dashboard')" class="nav-btn w-full flex items-center gap-3 px-5 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-none">
         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>
         <span>仪表盘</span></button>
@@ -81,9 +81,8 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         <span>变动日志</span></button>
       <div id="nav-admin-only" class="hidden">
-        <p class="px-5 pt-4 pb-1 text-[10px] text-gray-400 font-bold uppercase tracking-wider">管理</p>
-        <button onclick="switchPage('users')" class="nav-btn w-full flex items-center gap-3 px-5 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-none">
-          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.428a9.38 9.38 0 006.326-3.606M15 19.428A9.38 9.38 0 0018.57 12c0-2.154-.712-4.225-1.896-5.857M15 19.428A9.38 9.38 0 0112 15.75c-2.154 0-4.225.712-5.857 1.896M15 19.428a9.38 9.38 0 01-3 1.072M12 15.75a9.345 9.345 0 01-6.326-3.606M12 15.75a9.345 9.345 0 006.326-3.606M12 15.75V3.375A2.25 2.25 0 0014.25.75h.75a2.25 2.25 0 012.25 2.25v12.75a2.25 2.25 0 01-2.25 2.25h-.75a2.25 2.25 0 01-2.25-2.25V15.75zm-6.326-3.606A9.345 9.345 0 016 12c0-1.658.564-3.18 1.5-4.394M6 12a9.38 9.38 0 01-1.5-5.082M6 12a9.38 9.38 0 001.5 5.082M9.75 3.375A2.25 2.25 0 007.5 5.625v2.25a2.25 2.25 0 104.5 0v-2.25a2.25 2.25 0 00-2.25-2.25z"/></svg>
+        <p class="px-5 pt-4 pb-1 text-xs text-gray-400 font-bold uppercase tracking-wider">管理</p>
+        <button onclick="switchPage('users')" class="nav-btn w-full flex items-center gap-3 px-5 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-none"><svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-2.572m0 0A9.328 9.328 0 0018.001 8.168c0-1.619-.463-3.128-1.262-4.396m4.383 5.734A9.357 9.357 0 0021 8.168C21 3.772 17.228 0 12.001 0S3 3.772 3 8.168c0 1.619.463 3.128 1.262 4.396m11.475 5.734A9.357 9.357 0 0012.001 21c-1.619 0-3.128-.463-4.396-1.262M12 12.75a3 3 0 110-6 3 3 0 010 6z"/></svg>
           <span>用户管理</span></button>
       </div>
     </nav>
