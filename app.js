@@ -550,5 +550,75 @@ async function changeUserRole(userId, newRole) {
   } catch (err) { showToast('修改失败:' + err.message, 'error'); }
 }
 
+
+// ============ 批量导入产品 ============
+function openBatchProductModal() {
+  document.getElementById('batch-product-paste').value = '';
+  document.getElementById('batch-product-review').classList.add('hidden');
+  document.getElementById('batch-product-errors').textContent = '';
+  openModal('modal-batch-product');
+}
+
+async function handleBatchProductPaste() {
+  const text = document.getElementById('batch-product-paste').value.trim();
+  if (!text) { showToast('请先粘贴文本', 'warning'); return; }
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  const errors = [];
+  const products = [];
+  lines.forEach((line, idx) => {
+    const parts = line.split(',').map(s => s.trim());
+    if (!parts[0]) { errors.push('第' + (idx+1) + '行：产品名称不能为空'); return; }
+    products.push({
+      name: parts[0],
+      sku: parts[1] || '',
+      stock: parseInt(parts[2]) || 0,
+      alert: parseInt(parts[3]) || 10,
+      unit: parts[4] || '个'
+    });
+  });
+
+  // 显示预览
+  const head = document.getElementById('batch-product-head');
+  const body = document.getElementById('batch-product-body');
+  head.innerHTML = '<tr>' + ['产品名称','SKU','库存','预警阈值','单位'].map(h => '<th class="px-2 py-1 text-left">' + h + '</th>').join('') + '</tr>';
+  body.innerHTML = products.map(p => '<tr class="border-b border-gray-100">' +
+    [p.name, p.sku, p.stock, p.alert, p.unit].map(v => '<td class="px-2 py-1">' + esc(v) + '</td>').join('') + '</tr>').join('');
+  document.getElementById('batch-product-count').textContent = '共 ' + products.length + ' 条，点击"确认导入"写入数据库';
+  document.getElementById('batch-product-errors').textContent = errors.length ? errors.join('; ') : '';
+  document.getElementById('batch-product-review').classList.remove('hidden');
+
+  // 确认导入按钮
+  const btnArea = document.getElementById('batch-product-review');
+  let confirmBtn = document.getElementById('btn-confirm-batch-product');
+  if (!confirmBtn) {
+    confirmBtn = document.createElement('button');
+    confirmBtn.id = 'btn-confirm-batch-product';
+    confirmBtn.className = 'btn-touch mt-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium';
+    confirmBtn.onclick = () => saveBatchProducts(products);
+    btnArea.appendChild(confirmBtn);
+  }
+  confirmBtn.textContent = '确认导入 ' + products.length + ' 条';
+}
+
+async function saveBatchProducts(products) {
+  const btn = document.getElementById('btn-confirm-batch-product');
+  btn.disabled = true; btn.textContent = '导入中…';
+  let ok = 0, fail = 0;
+  for (const p of products) {
+    try {
+      const { error } = await sb.rpc('upsert_product', {
+        p_id: null, p_name: p.name, p_sku: p.sku, p_stock: p.stock,
+        p_alert: p.alert, p_unit: p.unit, p_feishu_user_id: feishuUid
+      });
+      if (error) throw error;
+      ok++;
+    } catch (e) { fail++; console.warn('批量导入失败:', p.name, e.message); }
+  }
+  btn.disabled = false;
+  closeModal('modal-batch-product');
+  await loadProducts(); renderInventory();
+  showToast('导入完成：成功 ' + ok + ' 条' + (fail ? '，失败 ' + fail + ' 条' : ''), fail ? 'warning' : 'success');
+}
+
 // ============ 启动 ============
 window.addEventListener('DOMContentLoaded', init);
