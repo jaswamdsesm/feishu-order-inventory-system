@@ -187,8 +187,8 @@ function showToast(msg, type) {
   document.body.appendChild(t);
   setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .4s'; setTimeout(() => t.remove(), 400); }, 2500);
 }
-function openModal(id) { const e = document.getElementById(id); if (e) { e.classList.remove('hidden'); e.classList.add('flex', 'active'); } }
-function closeModal(id) { const e = document.getElementById(id); if (e) { e.classList.add('hidden'); e.classList.remove('flex', 'active'); } }
+function openModal(id) { const e = document.getElementById(id); if (e) { e.classList.remove('hidden'); e.style.display = 'flex'; e.classList.add('active'); } }
+function closeModal(id) { const e = document.getElementById(id); if (e) { e.classList.add('hidden'); e.style.display = ''; e.classList.remove('active'); } }
 function genOrderNo() {
   const d = new Date();
   const ds = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
@@ -529,7 +529,7 @@ function renderUsers() {
   if (allProfiles.length === 0) { list.innerHTML = '<p class="text-sm text-gray-400">暂无用户数据</p>'; return; }
   list.innerHTML = allProfiles.map(u => {
     const roleText = { super_admin: '<span class="text-red-600 font-medium">超级管理员</span>', admin: '<span class="text-blue-600">管理员</span>', employee: '<span class="text-gray-500">员工</span>' };
-    return `<div class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">${(u.name || '?')[0]}</div><div><p class="text-sm font-medium">${esc(u.name)}</p><p class="text-xs text-gray-400">${esc(u.feishu_user_id)}</p></div></div><div>${roleText[u.role] || u.role || ''}<select onchange="changeUserRole('${u.id}',this.value)" class="ml-2 text-xs border border-gray-200 rounded px-1 py-0.5"><option value="employee" ${u.role === 'employee' ? 'selected' : ''}>员工</option><option value="admin" ${u.role === 'admin' ? 'selected' : ''}>管理员</option></select></div></div>`;
+    return `<div class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">${(u.name || '?')[0]}</div><div><p class="text-sm font-medium">${esc(u.name)}</p><p class="text-xs text-gray-400">${esc(u.feishu_user_id)}</p></div></div><div>${roleText[u.role] || u.role || ''}<select onchange="changeUserRole('${u.id}',this.value)" class="ml-2 text-xs border border-gray-200 rounded px-1 py-0.5"><option value="employee" ${u.role === 'employee' ? 'selected' : ''}>员工</option><option value="admin" ${u.role === 'admin' ? 'selected' : ''}>管理员</option><option value="super_admin" ${u.role === 'super_admin' ? 'selected' : ''}>超级管理员</option></select></div></div>`;
   }).join('');
 }
 
