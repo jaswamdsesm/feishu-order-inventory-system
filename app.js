@@ -328,13 +328,17 @@ async function saveProduct() {
   const alertVal = parseInt(document.getElementById('product-alert').value) || 10;
   const unit = document.getElementById('product-unit').value.trim() || '个';
   if (!name) { showToast('请填写产品名称', 'warning'); return; }
-  // 🔑 SKU 唯一性预检：编辑时排除自身，新增时检查全部
-  if (sku) {
-    const conflict = allProducts.find(p => (p.sku || '') === sku && p.id !== id);
-    if (conflict) {
-      showToast(`规格「${sku}」已存在于「${conflict.name}」，请更换规格`, 'error');
-      return;
-    }
+  // 🔑 复合唯一性预检：名称+简称+规格+单位 完全一致视为同一产品
+  const conflict = allProducts.find(p =>
+    (p.name || '') === name &&
+    (p.short_name || '') === shortName &&
+    (p.sku || '') === sku &&
+    (p.unit || '个') === unit &&
+    p.id !== id
+  );
+  if (conflict) {
+    showToast(`该产品已存在（${conflict.name}${conflict.sku ? ' ' + conflict.sku : ''}），请勿重复添加`, 'error');
+    return;
   }
   const btn = document.getElementById('btn-save-product');
   btn.disabled = true; btn.textContent = '保存中…';
@@ -650,11 +654,11 @@ async function handleBatchProductPaste() {
     });
   });
 
-  // 去重合并：同名且同规格的产品合并为一条，库存累加
+  // 去重合并：名称+简称+规格+单位完全一致才合并，库存累加
   const merged = {};
   const deduped = [];
   products.forEach(p => {
-    const key = (p.name || '') + '\x00' + (p.sku || '');
+    const key = (p.name || '') + '\x00' + (p.short_name || '') + '\x00' + (p.sku || '') + '\x00' + (p.unit || '');
     if (merged[key]) {
       merged[key].stock += p.stock;
     } else {
@@ -668,11 +672,18 @@ async function handleBatchProductPaste() {
   products.length = 0;
   products.push(...deduped);
 
-  // 检测 sku 与数据库已有记录冲突，并提示
-  const skuConflicts = products.filter(p => p.sku && allProducts.find(x => (x.sku || '') === p.sku));
-  if (skuConflicts.length > 0) {
-    const names = skuConflicts.map(p => p.name + (p.sku ? '(' + p.sku + ')' : '')).join('、');
-    errors.push('以下产品规格已存在，将累加库存：' + names);
+  // 检测与数据库已有记录匹配（名称+简称+规格+单位完全一致），并提示
+  const conflicts = products.filter(p => {
+    return allProducts.find(x =>
+      (x.name || '') === p.name &&
+      (x.short_name || '') === p.short_name &&
+      (x.sku || '') === p.sku &&
+      (x.unit || '个') === p.unit
+    );
+  });
+  if (conflicts.length > 0) {
+    const names = conflicts.map(p => p.name + (p.sku ? '(' + p.sku + ')' : '')).join('、');
+    errors.push('以下产品与已有记录完全匹配，将累加库存：' + names);
   }
 
   // 显示预览
@@ -701,11 +712,16 @@ async function handleBatchProductPaste() {
 async function saveBatchProducts(products) {
   const btn = document.getElementById('btn-confirm-batch-product');
   btn.disabled = true; btn.textContent = '导入中…';
-  let ok = 0, fail = 0, skipped = 0;
+  let ok = 0, fail = 0;
   for (const p of products) {
     try {
-      // 按 sku 查找已有产品（sku 是唯一的）
-      const existing = p.sku ? allProducts.find(x => (x.sku || '') === p.sku) : null;
+      // 按 名称+简称+规格+单位 复合键查找已有产品
+      const existing = allProducts.find(x =>
+        (x.name || '') === p.name &&
+        (x.short_name || '') === p.short_name &&
+        (x.sku || '') === p.sku &&
+        (x.unit || '个') === p.unit
+      );
       const p_id = existing ? existing.id : null;
       // 如果存在则累加库存，否则用传入的库存
       const stock = existing ? (existing.current_stock || 0) + p.stock : p.stock;
