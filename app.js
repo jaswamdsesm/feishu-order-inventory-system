@@ -328,10 +328,18 @@ async function saveProduct() {
   const alertVal = parseInt(document.getElementById('product-alert').value) || 10;
   const unit = document.getElementById('product-unit').value.trim() || '个';
   if (!name) { showToast('请填写产品名称', 'warning'); return; }
+  // 🔑 SKU 唯一性预检：编辑时排除自身，新增时检查全部
+  if (sku) {
+    const conflict = allProducts.find(p => (p.sku || '') === sku && p.id !== id);
+    if (conflict) {
+      showToast(`规格「${sku}」已存在于「${conflict.name}」，请更换规格`, 'error');
+      return;
+    }
+  }
   const btn = document.getElementById('btn-save-product');
   btn.disabled = true; btn.textContent = '保存中…';
   try {
-    const { data, error } = await sb.rpc('upsert_product', { p_id: id, p_name: name, p_short_name: shortName, p_sku: sku, p_stock: stock, p_alert: alertVal, p_unit: unit, p_feishu_user_id: feishuUid });
+    const { data, error } = await sb.rpc('upsert_product', { p_id: id, p_name: name, p_short_name: shortName, p_sku: sku || null, p_stock: stock, p_alert: alertVal, p_unit: unit, p_feishu_user_id: feishuUid });
     if (error) throw error;
     closeModal('modal-product');
     await loadProducts(); renderInventory();
