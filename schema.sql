@@ -28,6 +28,7 @@ CREATE TABLE profiles (
 CREATE TABLE products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
+  short_name TEXT,
   sku TEXT UNIQUE,
   current_stock INT NOT NULL DEFAULT 0,
   min_stock_alert INT NOT NULL DEFAULT 10,
@@ -179,6 +180,7 @@ $$;
 CREATE OR REPLACE FUNCTION upsert_product(
   p_id UUID,
   p_name TEXT,
+  p_short_name TEXT,
   p_sku TEXT,
   p_stock INT,
   p_alert INT,
@@ -197,6 +199,7 @@ BEGIN
   IF p_id IS NOT NULL THEN
     UPDATE products SET
       name = p_name,
+      short_name = NULLIF(p_short_name, ''),
       sku = NULLIF(p_sku, ''),
       current_stock = p_stock,
       min_stock_alert = p_alert,
@@ -205,8 +208,8 @@ BEGIN
     WHERE id = p_id;
     v_id := p_id;
   ELSE
-    INSERT INTO products(name, sku, current_stock, min_stock_alert, unit)
-    VALUES (p_name, NULLIF(p_sku, ''), p_stock, p_alert, p_unit)
+    INSERT INTO products(name, short_name, sku, current_stock, min_stock_alert, unit)
+    VALUES (p_name, NULLIF(p_short_name, ''), NULLIF(p_sku, ''), p_stock, p_alert, p_unit)
     RETURNING id INTO v_id;
   END IF;
   RETURN v_id;

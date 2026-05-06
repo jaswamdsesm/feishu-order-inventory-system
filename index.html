@@ -127,7 +127,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
     <!-- 库存管理 -->
     <div id="page-inventory" class="page flex-1 p-4 md:p-6 space-y-4 overflow-y-auto">
       <div class="flex flex-col md:flex-row md:items-center gap-3">
-        <div class="flex-1 relative"><input type="text" id="inventory-search" placeholder="搜索产品名称/规格…" oninput="renderInventory()" class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
+        <div class="flex-1 relative"><input type="text" id="inventory-search" placeholder="搜索产品名称/简称/规格…" oninput="renderInventory()" class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
           <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg></div>
         <div id="inventory-admin-btns" class="hidden flex gap-2"><button onclick="openProductModal()" class="btn-touch flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2.5 rounded-xl transition-colors font-medium whitespace-nowrap"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>新增产品</button><button onclick="openBatchProductModal()" class="btn-touch flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white text-sm px-4 py-2.5 rounded-xl transition-colors font-medium whitespace-nowrap"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-4.5L12 21m0 0l4.5-9m-4.5 9h7.5"/></svg>批量导入</button></div>
       </div>
@@ -178,7 +178,8 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
   <div class="sticky top-0 bg-white px-5 py-4 border-b border-gray-100 flex items-center justify-between rounded-t-2xl z-10"><h3 id="product-modal-title" class="font-bold">新增产品</h3><button onclick="closeModal('modal-product')" class="text-gray-400 text-2xl w-8 h-8 flex items-center justify-center">×</button></div>
   <div class="p-5 space-y-4"><input type="hidden" id="product-id"/>
     <div><label class="block text-xs text-gray-500 mb-1">产品名称 *</label><input id="product-name" type="text" placeholder="请输入产品名称" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
-    <div><label class="block text-xs text-gray-500 mb-1">规格</label><input id="product-sku" type="text" placeholder="选填，如 500mg/瓶" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
+    <div class="grid grid-cols-2 gap-3"><div><label class="block text-xs text-gray-500 mb-1">简称</label><input id="product-short-name" type="text" placeholder="选填，如 冻干粉" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
+      <div><label class="block text-xs text-gray-500 mb-1">规格</label><input id="product-sku" type="text" placeholder="选填，如 500mg/瓶" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div></div>
     <div class="grid grid-cols-2 gap-3"><div><label class="block text-xs text-gray-500 mb-1">当前库存 *</label><input id="product-stock" type="number" min="0" placeholder="0" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
       <div><label class="block text-xs text-gray-500 mb-1">预警阈值 *</label><input id="product-alert" type="number" min="0" placeholder="10" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div></div>
     <div><label class="block text-xs text-gray-500 mb-1">单位</label><input id="product-unit" type="text" placeholder="个" value="个" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
@@ -221,8 +222,8 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
   <div class="p-5 space-y-4">
     <div class="bg-blue-50 rounded-lg p-3 text-xs text-blue-700 space-y-1">
       <p><b>格式：</b>每行一条，逗号分隔</p>
-      <p>产品名称,规格(选填),库存数量(选填),预警阈值(选填),单位(选填)</p>
-      <p>示例：肽类冻干粉,A001,100,10,瓶</p>
+      <p>产品名称,简称(选填),规格(选填),库存数量(选填),预警阈值(选填),单位(选填)</p>
+      <p>示例：肽类冻干粉,冻干粉,A001,100,10,瓶</p>
     </div>
     <textarea id="batch-product-paste" rows="6" placeholder="粘贴文本，每行一个产品…" class="w-full text-sm border border-gray-200 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none font-mono"></textarea>
     <div class="flex justify-end gap-2">

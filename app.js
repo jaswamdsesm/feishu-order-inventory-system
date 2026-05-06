@@ -280,10 +280,10 @@ async function loadDashboardData() {
 // ============ 库存管理 ============
 function renderInventory() {
   const kw = document.getElementById('inventory-search').value.trim().toLowerCase();
-  const filtered = kw ? allProducts.filter(p => (p.name || '').toLowerCase().includes(kw) || (p.sku || '').toLowerCase().includes(kw)) : allProducts;
+  const filtered = kw ? allProducts.filter(p => (p.name || '').toLowerCase().includes(kw) || (p.short_name || '').toLowerCase().includes(kw) || (p.sku || '').toLowerCase().includes(kw)) : allProducts;
   const isAdmin = ['super_admin', 'admin'].includes(currentRole);
   let head = '<tr>';
-  ['产品名称', '规格', '当前库存', '预警阈值', '单位', '更新时间', isAdmin ? '操作' : ''].forEach(h => { head += `<th class="px-4 py-3 text-left font-medium">${h}</th>`; });
+  ['产品名称', '简称', '规格', '当前库存', '预警阈值', '单位', '更新时间', isAdmin ? '操作' : ''].forEach(h => { head += `<th class="px-4 py-3 text-left font-medium">${h}</th>`; });
   head += '</tr>';
   document.getElementById('inventory-head').innerHTML = head;
   if (filtered.length === 0) { document.getElementById('inventory-body').innerHTML = ''; document.getElementById('inventory-empty').classList.remove('hidden'); return; }
@@ -291,7 +291,7 @@ function renderInventory() {
   document.getElementById('inventory-body').innerHTML = filtered.map(p => {
     const isLow = p.current_stock <= p.min_stock_alert;
     const btnHtml = isAdmin ? `<button onclick="openProductModal('${p.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteProduct('${p.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
-    return `<tr class="${isLow ? 'stock-warn' : ''} border-b border-gray-50 hover:bg-gray-50"><td class="px-4 py-3 font-medium">${esc(p.name)}</td><td class="px-4 py-3 text-gray-400">${esc(p.sku || '-')}</td><td class="px-4 py-3 ${isLow ? 'text-red-600 font-bold' : 'text-green-600'}">${p.current_stock} ${esc(p.unit || '个')}</td><td class="px-4 py-3 text-xs text-gray-400">${p.min_stock_alert}</td><td class="px-4 py-3">${esc(p.unit || '个')}</td><td class="px-4 py-3 text-xs text-gray-400">${(p.updated_at || p.created_at || '').slice(0, 10)}</td><td class="px-4 py-3">${btnHtml}</td></tr>`;
+    return `<tr class="${isLow ? 'stock-warn' : ''} border-b border-gray-50 hover:bg-gray-50"><td class="px-4 py-3 font-medium">${esc(p.name)}</td><td class="px-4 py-3 text-gray-500">${esc(p.short_name || '-')}</td><td class="px-4 py-3 text-gray-400">${esc(p.sku || '-')}</td><td class="px-4 py-3 ${isLow ? 'text-red-600 font-bold' : 'text-green-600'}">${p.current_stock} ${esc(p.unit || '个')}</td><td class="px-4 py-3 text-xs text-gray-400">${p.min_stock_alert}</td><td class="px-4 py-3">${esc(p.unit || '个')}</td><td class="px-4 py-3 text-xs text-gray-400">${(p.updated_at || p.created_at || '').slice(0, 10)}</td><td class="px-4 py-3">${btnHtml}</td></tr>`;
   }).join('');
 }
 
@@ -302,6 +302,7 @@ function openProductModal(id) {
     const p = allProducts.find(x => x.id === id);
     if (p) {
       document.getElementById('product-name').value = p.name || '';
+      document.getElementById('product-short-name').value = p.short_name || '';
       document.getElementById('product-sku').value = p.sku || '';
       document.getElementById('product-stock').value = p.current_stock || 0;
       document.getElementById('product-alert').value = p.min_stock_alert || 10;
@@ -309,6 +310,7 @@ function openProductModal(id) {
     }
   } else {
     document.getElementById('product-name').value = '';
+    document.getElementById('product-short-name').value = '';
     document.getElementById('product-sku').value = '';
     document.getElementById('product-stock').value = 0;
     document.getElementById('product-alert').value = 10;
@@ -320,6 +322,7 @@ function openProductModal(id) {
 async function saveProduct() {
   const id = document.getElementById('product-id').value || null;
   const name = document.getElementById('product-name').value.trim();
+  const shortName = document.getElementById('product-short-name').value.trim();
   const sku = document.getElementById('product-sku').value.trim();
   const stock = parseInt(document.getElementById('product-stock').value) || 0;
   const alertVal = parseInt(document.getElementById('product-alert').value) || 10;
@@ -328,7 +331,7 @@ async function saveProduct() {
   const btn = document.getElementById('btn-save-product');
   btn.disabled = true; btn.textContent = '保存中…';
   try {
-    const { data, error } = await sb.rpc('upsert_product', { p_id: id, p_name: name, p_sku: sku, p_stock: stock, p_alert: alertVal, p_unit: unit, p_feishu_user_id: feishuUid });
+    const { data, error } = await sb.rpc('upsert_product', { p_id: id, p_name: name, p_short_name: shortName, p_sku: sku, p_stock: stock, p_alert: alertVal, p_unit: unit, p_feishu_user_id: feishuUid });
     if (error) throw error;
     closeModal('modal-product');
     await loadProducts(); renderInventory();
@@ -628,19 +631,20 @@ async function handleBatchProductPaste() {
     if (!parts[0]) { errors.push('第' + (idx+1) + '行：产品名称不能为空'); return; }
     products.push({
       name: parts[0],
-      sku: parts[1] || '',
-      stock: parseInt(parts[2]) || 0,
-      alert: parseInt(parts[3]) || 10,
-      unit: parts[4] || '个'
+      short_name: parts[1] || '',
+      sku: parts[2] || '',
+      stock: parseInt(parts[3]) || 0,
+      alert: parseInt(parts[4]) || 10,
+      unit: parts[5] || '个'
     });
   });
 
   // 显示预览
   const head = document.getElementById('batch-product-head');
   const body = document.getElementById('batch-product-body');
-  head.innerHTML = '<tr>' + ['产品名称','规格','库存','预警阈值','单位'].map(h => '<th class="px-2 py-1 text-left">' + h + '</th>').join('') + '</tr>';
+  head.innerHTML = '<tr>' + ['产品名称','简称','规格','库存','预警阈值','单位'].map(h => '<th class="px-2 py-1 text-left">' + h + '</th>').join('') + '</tr>';
   body.innerHTML = products.map(p => '<tr class="border-b border-gray-100">' +
-    [p.name, p.sku, p.stock, p.alert, p.unit].map(v => '<td class="px-2 py-1">' + esc(v) + '</td>').join('') + '</tr>').join('');
+    [p.name, p.short_name, p.sku, p.stock, p.alert, p.unit].map(v => '<td class="px-2 py-1">' + esc(v) + '</td>').join('') + '</tr>').join('');
   document.getElementById('batch-product-count').textContent = '共 ' + products.length + ' 条，点击"确认导入"写入数据库';
   document.getElementById('batch-product-errors').textContent = errors.length ? errors.join('; ') : '';
   document.getElementById('batch-product-review').classList.remove('hidden');
@@ -665,7 +669,7 @@ async function saveBatchProducts(products) {
   for (const p of products) {
     try {
       const { error } = await sb.rpc('upsert_product', {
-        p_id: null, p_name: p.name, p_sku: p.sku, p_stock: p.stock,
+        p_id: null, p_name: p.name, p_short_name: p.short_name, p_sku: p.sku, p_stock: p.stock,
         p_alert: p.alert, p_unit: p.unit, p_feishu_user_id: feishuUid
       });
       if (error) throw error;
