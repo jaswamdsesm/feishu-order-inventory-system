@@ -656,9 +656,9 @@ async function handleBatchProductPaste() {
     confirmBtn = document.createElement('button');
     confirmBtn.id = 'btn-confirm-batch-product';
     confirmBtn.className = 'btn-touch mt-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium';
-    confirmBtn.onclick = () => saveBatchProducts(products);
     btnArea.appendChild(confirmBtn);
   }
+  confirmBtn.onclick = () => saveBatchProducts(products);
   confirmBtn.textContent = '确认导入 ' + products.length + ' 条';
 }
 
