@@ -290,7 +290,7 @@ function renderInventory() {
   document.getElementById('inventory-empty').classList.add('hidden');
   document.getElementById('inventory-body').innerHTML = filtered.map(p => {
     const isLow = p.current_stock <= p.min_stock_alert;
-    const btnHtml = isAdmin ? `<button onclick="openProductModal('${p.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteProduct('${p.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
+    const btnHtml = isAdmin ? `<button onclick="openRestockModal('${p.id}')" class="text-xs text-green-600 hover:underline mr-2">补货</button><button onclick="openProductModal('${p.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteProduct('${p.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
     return `<tr class="${isLow ? 'stock-warn' : ''} border-b border-gray-50 hover:bg-gray-50"><td class="px-4 py-3 font-medium">${esc(p.name)}</td><td class="px-4 py-3 text-gray-500">${esc(p.short_name || '-')}</td><td class="px-4 py-3 text-gray-400">${esc(p.sku || '-')}</td><td class="px-4 py-3 ${isLow ? 'text-red-600 font-bold' : 'text-green-600'}">${p.current_stock} ${esc(p.unit || '个')}</td><td class="px-4 py-3 text-xs text-gray-400">${p.min_stock_alert}</td><td class="px-4 py-3">${esc(p.unit || '个')}</td><td class="px-4 py-3 text-xs text-gray-400">${(p.updated_at || p.created_at || '').slice(0, 10)}</td><td class="px-4 py-3">${btnHtml}</td></tr>`;
   }).join('');
 }
@@ -624,10 +624,13 @@ async function handleBatchProductPaste() {
   const text = document.getElementById('batch-product-paste').value.trim();
   if (!text) { showToast('请先粘贴文本', 'warning'); return; }
   const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  const headerSet = new Set(['产品名称', '简称', '规格', '库存数量', '预警阈值', '单位', '产品', '规格', '简称', '库存', '预警', '单位']);
   const errors = [];
   const products = [];
   lines.forEach((line, idx) => {
     const parts = line.split(',').map(s => s.trim());
+    // 自动剔除表头行
+    if (headerSet.has(parts[0])) return;
     if (!parts[0]) { errors.push('第' + (idx+1) + '行：产品名称不能为空'); return; }
     products.push({
       name: parts[0],
@@ -680,6 +683,45 @@ async function saveBatchProducts(products) {
   closeModal('modal-batch-product');
   await loadProducts(); renderInventory();
   showToast('导入完成：成功 ' + ok + ' 条' + (fail ? '，失败 ' + fail + ' 条' : ''), fail ? 'warning' : 'success');
+}
+
+// ============ 补货 ============
+function openRestockModal(productId) {
+  const p = allProducts.find(x => x.id === productId);
+  if (!p) return;
+  document.getElementById('restock-product-id').value = productId;
+  document.getElementById('restock-product-name').textContent = p.name + (p.sku ? '（' + p.sku + '）' : '');
+  document.getElementById('restock-current-stock').textContent = p.current_stock + ' ' + (p.unit || '个');
+  document.getElementById('restock-qty').value = '';
+  openModal('modal-restock');
+}
+
+async function submitRestock() {
+  const productId = document.getElementById('restock-product-id').value;
+  const qty = parseInt(document.getElementById('restock-qty').value);
+  if (!qty || qty <= 0) { showToast('请输入有效的补货数量', 'warning'); return; }
+  const btn = document.getElementById('btn-restock');
+  btn.disabled = true; btn.textContent = '提交中…';
+  try {
+    const p = allProducts.find(x => x.id === productId);
+    if (!p) throw new Error('产品不存在');
+    const newStock = (p.current_stock || 0) + qty;
+    const { error } = await sb.rpc('upsert_product', {
+      p_id: productId,
+      p_name: p.name,
+      p_short_name: p.short_name || null,
+      p_sku: p.sku || null,
+      p_stock: newStock,
+      p_alert: p.min_stock_alert || 10,
+      p_unit: p.unit || '个',
+      p_feishu_user_id: feishuUid
+    });
+    if (error) throw error;
+    closeModal('modal-restock');
+    await loadProducts(); renderInventory();
+    showToast('补货成功，新库存：' + newStock, 'success');
+  } catch (err) { showToast('补货失败：' + err.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = '确认补货'; }
 }
 
 // ============ 启动 ============
