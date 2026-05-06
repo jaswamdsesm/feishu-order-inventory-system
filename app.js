@@ -642,6 +642,31 @@ async function handleBatchProductPaste() {
     });
   });
 
+  // 去重合并：同名且同规格的产品合并为一条，库存累加
+  const merged = {};
+  const deduped = [];
+  products.forEach(p => {
+    const key = (p.name || '') + '\x00' + (p.sku || '');
+    if (merged[key]) {
+      merged[key].stock += p.stock;
+    } else {
+      merged[key] = { ...p };
+      deduped.push(merged[key]);
+    }
+  });
+  if (products.length !== deduped.length) {
+    showToast('已自动合并 ' + (products.length - deduped.length) + ' 条重复产品', 'warning');
+  }
+  products.length = 0;
+  products.push(...deduped);
+
+  // 检测 sku 与数据库已有记录冲突，并提示
+  const skuConflicts = products.filter(p => p.sku && allProducts.find(x => (x.sku || '') === p.sku));
+  if (skuConflicts.length > 0) {
+    const names = skuConflicts.map(p => p.name + (p.sku ? '(' + p.sku + ')' : '')).join('、');
+    errors.push('以下产品规格已存在，将累加库存：' + names);
+  }
+
   // 显示预览
   const head = document.getElementById('batch-product-head');
   const body = document.getElementById('batch-product-body');
@@ -668,12 +693,23 @@ async function handleBatchProductPaste() {
 async function saveBatchProducts(products) {
   const btn = document.getElementById('btn-confirm-batch-product');
   btn.disabled = true; btn.textContent = '导入中…';
-  let ok = 0, fail = 0;
+  let ok = 0, fail = 0, skipped = 0;
   for (const p of products) {
     try {
+      // 按 sku 查找已有产品（sku 是唯一的）
+      const existing = p.sku ? allProducts.find(x => (x.sku || '') === p.sku) : null;
+      const p_id = existing ? existing.id : null;
+      // 如果存在则累加库存，否则用传入的库存
+      const stock = existing ? (existing.current_stock || 0) + p.stock : p.stock;
       const { error } = await sb.rpc('upsert_product', {
-        p_id: null, p_name: p.name, p_short_name: p.short_name, p_sku: p.sku, p_stock: p.stock,
-        p_alert: p.alert, p_unit: p.unit, p_feishu_user_id: feishuUid
+        p_id,
+        p_name: p.name,
+        p_short_name: p.short_name || null,
+        p_sku: p.sku || null,
+        p_stock: stock,
+        p_alert: p.alert || (existing ? existing.min_stock_alert : 10),
+        p_unit: p.unit || (existing ? existing.unit : '个'),
+        p_feishu_user_id: feishuUid
       });
       if (error) throw error;
       ok++;
@@ -682,7 +718,9 @@ async function saveBatchProducts(products) {
   btn.disabled = false;
   closeModal('modal-batch-product');
   await loadProducts(); renderInventory();
-  showToast('导入完成：成功 ' + ok + ' 条' + (fail ? '，失败 ' + fail + ' 条' : ''), fail ? 'warning' : 'success');
+  let msg = '导入完成：成功 ' + ok + ' 条';
+  if (fail) msg += '，失败 ' + fail + ' 条';
+  showToast(msg, fail ? 'warning' : 'success');
 }
 
 // ============ 补货 ============
