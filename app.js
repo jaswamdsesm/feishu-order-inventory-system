@@ -2919,7 +2919,6 @@ async function autoQuoteOrder() {
 async function autoCalcShipping() {
   const country = document.getElementById('order-customer-country')?.value.trim();
   if (!country) { showToast('请先选择国家', 'warning'); return; }
-  // 欧洲白名单校验
   if (!isCountryAllowed(country)) {
     showToast(`"${country}"暂不支持邮寄，请更换国家`, 'warning'); return;
   }
@@ -2938,10 +2937,10 @@ async function autoCalcShipping() {
     return '冻干粉';
   }
 
-  // 第一步：遍历订单项，计算总盒数 & 每盒重量列表
+  // 第一步：遍历订单项，构建每盒重量列表
   let totalVials = 0;
   let unmatchedProducts = [];
-  const vialWeightList = []; // 每盒的重量，用于后续分箱
+  const vialWeightList = [];
   const container = document.getElementById('order-items-container');
   container.querySelectorAll('div[id^="item-row-"]').forEach(row => {
     const idx = row.id.replace('item-row-', '');
@@ -2978,19 +2977,41 @@ async function autoCalcShipping() {
   const boxCapacity = selectedPkg.capacity || 30;
   const pkgWeight = selectedPkg.gross_weight || selectedPkg.net_weight || 0;
 
-  // 第三步：自动判断规格类型（大件/小件）
+  // 第三步：分箱（同时约束：盒数 ≤ 箱子容量，重量严格 < 22KG）
+  const MAX_BOX_WEIGHT = 21999; // 严格小于 22KG
+  const boxes = []; // 每个元素是一箱内的盒子重量数组
+  let currentBox = [];
+  let currentWeight = 0; // 当前箱的盒子总重量（不含箱子自重）
+  for (const w of vialWeightList) {
+    const wouldBeWeight = currentWeight + w + pkgWeight;
+    if (currentBox.length >= boxCapacity || (currentBox.length > 0 && wouldBeWeight > MAX_BOX_WEIGHT)) {
+      boxes.push(currentBox);
+      currentBox = [];
+      currentWeight = 0;
+    }
+    currentBox.push(w);
+    currentWeight += w;
+  }
+  if (currentBox.length > 0) boxes.push(currentBox);
+
+  // 计算每箱实际重量（含箱子）
+  const boxWeights = boxes.map(ch => ch.reduce((s, w) => s + w, 0) + pkgWeight);
+
+  // 第四步：自动判断规格类型（大件/小件）
   let targetSpec = '';
   const isEurope = isEuropeanCountry(country);
   const isAustralia = country.includes('澳大利亚') || country.includes('澳洲');
   if (isEurope) {
-    const perBoxWeight = (vialWeightList.reduce((s, w) => s + w, 0) / Math.ceil(totalVials / boxCapacity)) + pkgWeight;
-    targetSpec = (perBoxWeight >= 10000 && perBoxWeight <= 20000) ? '大件' : '小件';
+    // 欧洲：每箱重量 10-20KG → 大件（按平均每箱判断）
+    const avgBoxWeight = boxWeights.reduce((s, w) => s + w, 0) / boxWeights.length;
+    targetSpec = (avgBoxWeight >= 10000 && avgBoxWeight <= 20000) ? '大件' : '小件';
   } else if (isAustralia) {
-    const totalWeight = vialWeightList.reduce((s, w) => s + w, 0);
+    // 澳洲：总重量（含箱子）22-50KG → 大件
+    const totalWeight = boxWeights.reduce((s, w) => s + w, 0);
     targetSpec = (totalWeight >= 22000 && totalWeight <= 50000) ? '大件' : '小件';
   }
 
-  // 第四步：匹配运费模板（国家匹配 + 规格类型优先）
+  // 第五步：匹配运费模板（国家匹配 + 规格类型优先）
   let candidates = shippingTemplates.filter(t => {
     if (!t.country) return false;
     return t.country === country || t.country.startsWith(country) || country.startsWith(t.country) || t.country.includes(country) || country.includes(t.country);
@@ -3003,21 +3024,13 @@ async function autoCalcShipping() {
   if (!tpl && candidates.length > 0) tpl = candidates[0];
   if (!tpl) { showToast(`未找到"${country}"的运费模板`, 'warning'); return; }
 
-  // 第五步：分箱计费
-  const boxes = [];
-  let idx = 0;
-  while (idx < vialWeightList.length) {
-    const chunk = vialWeightList.slice(idx, idx + boxCapacity);
-    const boxWeight = chunk.reduce((s, w) => s + w, 0) + pkgWeight;
-    boxes.push(boxWeight);
-    idx += boxCapacity;
-  }
+  // 第六步：计费（每箱单独算首重+续重）
   const firstW = tpl.first_unit_qty ?? tpl.first_weight ?? 0;
   const addW  = tpl.add_unit_qty ?? tpl.add_weight ?? 0;
   const firstP = tpl.first_price ?? 0;
   const addP  = tpl.add_price ?? 0;
   let totalFreight = 0;
-  boxes.forEach(bw => {
+  boxWeights.forEach(bw => {
     if (bw <= firstW) {
       totalFreight += firstP;
     } else {
@@ -3031,7 +3044,7 @@ async function autoCalcShipping() {
   const sym = curSym(tpl.currency || 'USD');
   let msg = `运费估算：${sym}${totalFreight.toFixed(2)}（${tpl.country}·${tpl.channel}`;
   if (tpl.spec_type) msg += `·${tpl.spec_type}`;
-  if (tpl.delivey_time) msg += `·${tpl.delivey_time}`;
+  if (tpl.delivery_time) msg += `·${tpl.delivery_time}`;
   msg += `）`;
   msg += `；分${boxes.length}箱，用"${selectedPkg.name}"`;
   if (unmatchedProducts.length > 0) {
