@@ -532,7 +532,7 @@ function switchPage(page) {
   clearAllRefreshTimers();
   if (page === 'dashboard') { startPageRefresh(page, loadDashboardData); }
   else if (page === 'inventory') { startPageRefresh(page, () => loadProducts().then(renderInventory)); }
-  else if (page === 'orders') { startPageRefresh(page, () => loadOrders().then(renderOrders)); }
+  else if (page === 'orders') { startPageRefresh(page, () => Promise.all([loadOrders(), loadWeightProducts()]).then(() => renderOrders())); }
   else if (page === 'logs') { startPageRefresh(page, () => loadInventoryLogs().then(renderLogs)); }
   else if (page === 'users' && currentRole === 'super_admin') { renderUsers(); }
   else if (page === 'quote') { renderQuotePage(); }
@@ -1063,8 +1063,10 @@ async function saveOrder() {
     }).join('，');
     const totalQty = items.reduce((s, i) => s + i.quantity, 0);
     const totalAmt = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
+    // 新增订单时生成 UUID
+    const newOrderId = editingOrderId || crypto.randomUUID();
     const { data, error } = await sb.rpc('upsert_order', {
-      p_id: editingOrderId || null,
+      p_id: newOrderId,
       p_order_no: orderNo,
       p_customer_name: name,
       p_customer_phone: phone,
