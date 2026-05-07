@@ -3177,17 +3177,22 @@ async function autoCalcShipping() {
   }
 
   // 第五步：匹配运费模板（国家匹配 + 规格类型优先）
+  console.log('[autoCalc] 订单国家:', JSON.stringify(country));
+  console.log('[autoCalc] 所有模板:', shippingTemplates.map(t => t.country + '|' + (t.spec_type||'无')));
   let candidates = shippingTemplates.filter(t => {
     if (!t.country) return false;
-    return t.country === country || t.country.startsWith(country) || country.startsWith(t.country) || t.country.includes(country) || country.includes(t.country);
+    const match = t.country === country || t.country.startsWith(country) || country.startsWith(t.country) || t.country.includes(country) || country.includes(t.country);
+    if (match) console.log('[autoCalc] 候选模板:', t.country, t.spec_type, t.channel);
+    return match;
   });
+  console.log('[autoCalc] 候选数:', candidates.length, 'targetSpec:', targetSpec);
   let tpl = null;
   if (targetSpec) {
     tpl = candidates.find(t => t.spec_type === targetSpec);
-    if (!tpl) tpl = candidates.find(t => !t.spec_type || t.spec_type === '');
+    if (!tpl) { tpl = candidates.find(t => !t.spec_type || t.spec_type === ''); console.log('[autoCalc] 未找到规格匹配，降级取无规格模板'); }
   }
-  if (!tpl && candidates.length > 0) tpl = candidates[0];
-  if (!tpl) { showToast(`未找到"${country}"的运费模板`, 'warning'); return; }
+  if (!tpl && candidates.length > 0) { tpl = candidates[0]; console.log('[autoCalc] 无规格要求，取第一个候选'); }
+  if (!tpl) { showToast(`未找到"${country}"的运费模板（已有模板国家：` + shippingTemplates.map(t=>t.country).join('、') + `）`, 'warning'); return; }
 
   // 第六步：计费（每箱单独算首重+续重）
   const firstW = tpl.first_unit_qty ?? tpl.first_weight ?? 0;
