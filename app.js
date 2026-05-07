@@ -592,11 +592,24 @@ function showToast(msg, type) {
 }
 function openModal(id) { const e = document.getElementById(id); if (e) { e.classList.remove('hidden'); e.style.display = 'flex'; e.classList.add('active'); } }
 function closeModal(id) { const e = document.getElementById(id); if (e) { e.classList.add('hidden'); e.style.display = ''; e.classList.remove('active'); } }
-function genOrderNo(dateStr) {
+async function genOrderNo(dateStr) {
   // dateStr: 'YYYY-MM-DD' 或 undefined（用今天）
   const d = dateStr ? new Date(dateStr + 'T00:00:00') : new Date();
   const ds = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
-  return 'ORD' + ds + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+  const prefix = 'ORD' + ds;
+  // 从数据库查当天最大序号，+1 保证唯一
+  const { data, error } = await sb.from('orders')
+    .select('order_no')
+    .like('order_no', prefix + '%')
+    .order('order_no', { ascending: false })
+    .limit(1);
+  let seq = 1;
+  if (data && data.length > 0) {
+    const lastNo = data[0].order_no;
+    const lastSeq = parseInt(lastNo.slice(-4), 10);
+    if (!isNaN(lastSeq)) seq = lastSeq + 1;
+  }
+  return prefix + String(seq).padStart(4, '0');
 }
 function isPhoneHidden() { return currentRole === 'employee'; }
 
@@ -1034,7 +1047,7 @@ async function saveOrder() {
   const btn = document.getElementById('btn-save-order'); btn.disabled = true; btn.textContent = '保存中…';
   try {
     const orderDate = document.getElementById('order-date')?.value || '';
-    const orderNo = isEdit ? null : genOrderNo(orderDate);
+    const orderNo = isEdit ? null : await genOrderNo(orderDate);
     const status = isEdit ? document.getElementById('order-status').value : 'pending';
     const trackingNo = document.getElementById('order-tracking-no')?.value.trim() || null;
     const { data, error } = await sb.rpc('upsert_order', {
@@ -1138,7 +1151,7 @@ async function batchImportOrders(results) {
     try {
       const dup = allOrders.find(o => o.customer_name === r.customer_name && o.customer_address === r.customer_address && (o.created_at || '').startsWith(new Date().toISOString().slice(0, 10)));
       if (dup) { fail++; continue; }
-      const orderNo = genOrderNo();
+      const orderNo = await genOrderNo();
       const items = [{ product_id: r.product_id, quantity: r.quantity, unit_price: r.unit_price || 0 }];
       const { data, error } = await sb.rpc('upsert_order', {
         p_order_id: null, p_order_no: orderNo,
@@ -3067,6 +3080,8 @@ async function autoQuoteOrder() {
 }
 
 async function autoCalcShipping() {
+  // 强制从 localStorage 加载最新模板（避免在订单页面未切换过运费助手时报空）
+  loadShippingTemplates();
   const country = document.getElementById('order-customer-country')?.value.trim();
   if (!country) { showToast('请先选择国家', 'warning'); return; }
   if (!isCountryAllowed(country)) {
