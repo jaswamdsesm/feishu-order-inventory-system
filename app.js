@@ -871,20 +871,25 @@ async function confirmShip() {
   if (!trackingNo) { showToast('请输入快递单号', 'warning'); return; }
   btn.disabled = true; btn.textContent = '提交中…';
   try {
-    const { data, error } = await sb.rpc('upsert_order', {
-      p_order_id: orderId,
-      p_order_no: null,
-      p_customer_name: null,
-      p_customer_phone: null,
-      p_customer_email: null,
-      p_customer_address: null,
+    const o = allOrders.find(x => x.id === orderId);
+    if (!o) throw new Error('订单不存在');
+    const { error } = await sb.rpc('upsert_order', {
+      p_id: orderId,
+      p_order_no: o.order_no,
+      p_customer_name: o.customer_name || '',
+      p_customer_phone: o.customer_phone || '',
+      p_customer_address: o.customer_address || o.address || '',
+      p_country: o.country || '',
+      p_product_summary: o.product_summary || '',
+      p_total_quantity: o.total_quantity || 0,
+      p_total_amount: o.total_amount || 0,
       p_status: 'shipped',
-      p_remark: null,
-      p_owner_name: null,
-      p_country: null,
-      p_tracking_no: trackingNo,
-      p_items: [],
-      p_feishu_user_id: feishuUid
+      p_feishu_user_id: o.feishu_user_id || feishuUid,
+      p_items: o.items || [],
+      p_shipping_fee: String(o.shipping_fee || 0),
+      p_order_date: o.order_date || null,
+      p_remark: o.remark || '',
+      p_tracking_no: trackingNo
     });
     if (error) throw error;
     const idx = allOrders.findIndex(o => o.id === orderId);
@@ -1051,13 +1056,30 @@ async function saveOrder() {
     const orderNo = isEdit ? null : await genOrderNo(orderDate);
     const status = isEdit ? document.getElementById('order-status').value : 'pending';
     const trackingNo = document.getElementById('order-tracking-no')?.value.trim() || null;
+    const shippingFee = String(parseFloat(document.getElementById('order-shipping-fee')?.value) || 0);
+    const productSummary = items.map(i => {
+      const p = allProducts.find(x => x.id === i.product_id);
+      return (p ? p.name : '未知产品') + '×' + i.quantity;
+    }).join('，');
+    const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+    const totalAmt = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
     const { data, error } = await sb.rpc('upsert_order', {
-      p_order_id: editingOrderId || null, p_order_no: orderNo,
-      p_customer_name: name, p_customer_phone: phone, p_customer_email: email,
-      p_customer_address: addr, p_status: status, p_remark: remark,
-      p_owner_name: ownerName || null, p_country: country || null,
-      p_tracking_no: trackingNo, p_items: items, p_feishu_user_id: feishuUid,
-      p_shipping_fee: parseFloat(document.getElementById('order-shipping-fee')?.value) || 0
+      p_id: editingOrderId || null,
+      p_order_no: orderNo,
+      p_customer_name: name,
+      p_customer_phone: phone,
+      p_customer_address: addr,
+      p_country: country || null,
+      p_product_summary: productSummary,
+      p_total_quantity: totalQty,
+      p_total_amount: totalAmt,
+      p_status: status,
+      p_feishu_user_id: feishuUid,
+      p_items: items,
+      p_shipping_fee: shippingFee,
+      p_order_date: orderDate || null,
+      p_remark: remark || '',
+      p_tracking_no: trackingNo || null
     });
     if (error) throw error;
     closeModal('modal-order');
@@ -1082,18 +1104,27 @@ async function deleteOrder(id) {
 async function markDelivered(id) {
   if (!confirm('确认标记为"已送达"？')) return;
   try {
+    const o = allOrders.find(x => x.id === id);
+    if (!o) throw new Error('订单不存在');
     const { error } = await sb.rpc('upsert_order', {
-      p_order_id: id,
-      p_order_no: null, p_customer_name: null, p_customer_phone: null,
-      p_customer_email: null, p_customer_address: null,
+      p_id: id,
+      p_order_no: o.order_no,
+      p_customer_name: o.customer_name || '',
+      p_customer_phone: o.customer_phone || '',
+      p_address: o.address || o.customer_address || '',
+      p_country: o.country || '',
+      p_product_summary: o.product_summary || '',
+      p_total_quantity: o.total_quantity || 0,
+      p_total_amount: o.total_amount || 0,
       p_status: 'completed',
-      p_remark: null, p_owner_name: null, p_country: null,
-      p_tracking_no: null, p_items: [], p_feishu_user_id: feishuUid,
-      p_shipping_fee: 0, p_order_date: null
+      p_feishu_user_id: o.feishu_user_id || feishuUid,
+      p_items: o.items || [],
+      p_shipping_fee: String(o.shipping_fee || 0),
+      p_order_date: o.order_date || null,
+      p_remark: o.remark || ''
     });
     if (error) throw error;
-    const idx = allOrders.findIndex(o => o.id === id);
-    if (idx >= 0) allOrders[idx].status = 'completed';
+    o.status = 'completed';
     renderOrders();
     showToast('已标记为已送达', 'success');
   } catch (e) { showToast('操作失败：' + e.message, 'error'); }
@@ -1155,11 +1186,24 @@ async function batchImportOrders(results) {
       if (dup) { fail++; continue; }
       const orderNo = await genOrderNo();
       const items = [{ product_id: r.product_id, quantity: r.quantity, unit_price: r.unit_price || 0 }];
+      const productSummary = (allProducts.find(x => x.id === r.product_id)?.name || '未知产品') + '×' + r.quantity;
       const { data, error } = await sb.rpc('upsert_order', {
-        p_order_id: null, p_order_no: orderNo,
-        p_customer_name: r.customer_name, p_customer_phone: r.customer_phone || '', p_customer_email: '',
-        p_customer_address: r.customer_address, p_status: 'pending', p_remark: r.remark || '',
-        p_items: items, p_feishu_user_id: feishuUid
+        p_id: null,
+        p_order_no: orderNo,
+        p_customer_name: r.customer_name,
+        p_customer_phone: r.customer_phone || '',
+        p_customer_address: r.customer_address || '',
+        p_country: null,
+        p_product_summary: productSummary,
+        p_total_quantity: r.quantity,
+        p_total_amount: r.quantity * (r.unit_price || 0),
+        p_status: 'pending',
+        p_feishu_user_id: feishuUid,
+        p_items: items,
+        p_shipping_fee: '0',
+        p_order_date: null,
+        p_remark: r.remark || '',
+        p_tracking_no: null
       });
       if (error) throw error;
       success++;
