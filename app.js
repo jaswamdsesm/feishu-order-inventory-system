@@ -592,8 +592,9 @@ function showToast(msg, type) {
 }
 function openModal(id) { const e = document.getElementById(id); if (e) { e.classList.remove('hidden'); e.style.display = 'flex'; e.classList.add('active'); } }
 function closeModal(id) { const e = document.getElementById(id); if (e) { e.classList.add('hidden'); e.style.display = ''; e.classList.remove('active'); } }
-function genOrderNo() {
-  const d = new Date();
+function genOrderNo(dateStr) {
+  // dateStr: 'YYYY-MM-DD' 或 undefined（用今天）
+  const d = dateStr ? new Date(dateStr + 'T00:00:00') : new Date();
   const ds = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
   return 'ORD' + ds + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
 }
@@ -776,15 +777,19 @@ function renderOrders() {
   if (kw) filtered = filtered.filter(o => (o.order_no || '').toLowerCase().includes(kw) || (o.customer_name || '').toLowerCase().includes(kw));
   if (dateFrom) filtered = filtered.filter(o => (o.created_at || '').slice(0, 10) >= dateFrom);
   if (dateTo) filtered = filtered.filter(o => (o.created_at || '').slice(0, 10) <= dateTo);
-  // 排序
+  // 排序（日期字段按时间戳排序，金额按数值排序）
   filtered.sort((a, b) => {
     let va, vb;
     if (sortField === 'amount') {
       const tA = (allOrderItems.filter(i => i.order_id === a.id).reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0));
       const tB = (allOrderItems.filter(i => i.order_id === b.id).reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0));
       va = tA; vb = tB;
+    } else if (sortField === 'created_at') {
+      va = new Date(a.created_at || 0).getTime();
+      vb = new Date(b.created_at || 0).getTime();
     } else {
-      va = a[sortField] || ''; vb = b[sortField] || '';
+      va = (a[sortField] || '').toString();
+      vb = (b[sortField] || '').toString();
     }
     if (va < vb) return sortDir === 'asc' ? -1 : 1;
     if (va > vb) return sortDir === 'asc' ? 1 : -1;
@@ -805,6 +810,7 @@ function renderOrders() {
     const shipBtn = canShip ? `<button onclick="openShipModal('${o.id}')" class="text-xs text-green-600 hover:underline mr-2">🚚 发货</button>` : '';
     const trackHtml = o.tracking_no ? `<p class="text-xs text-green-600">📦 单号：${esc(o.tracking_no)}</p>` : '';
     const btnHtml = isAdmin ? `<button onclick="openOrderModal('${o.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteOrder('${o.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
+    const deliveredBtn = (o.status === 'shipped' && isAdmin) ? `<button onclick="markDelivered('${o.id}')" class="text-xs text-blue-600 hover:underline mr-2">📦 已送达</button>` : '';
     return `<div class="order-card border ${sc[o.status] || 'border-gray-200'} rounded-xl p-4 bg-white shadow-sm">
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
@@ -824,7 +830,7 @@ function renderOrders() {
       <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 overflow-hidden">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + esc(p.sku) : ''; return `<div class="flex items-center justify-between text-xs min-w-0"><span class="truncate">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span><span class="text-gray-500 shrink-0 ml-2">${((i.unit_price || 0) * i.quantity).toFixed(2)}元</span></div>`; }).join('')}</div>
       <div class="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
         <span class="font-bold text-sm text-blue-600">合计：${total.toFixed(2)}元</span>
-        <div class="flex items-center gap-1">${shipBtn}${btnHtml}</div>
+        <div class="flex items-center gap-1">${shipBtn}${deliveredBtn}${btnHtml}</div>
       </div>
     </div>`;
   }).join('');
@@ -891,6 +897,9 @@ function openOrderModal(id) {
   document.getElementById('order-status-row').classList.toggle('hidden', !id);
   document.getElementById('order-items-container').innerHTML = '';
   orderItemCounter = 0;
+  // 默认填入今天日期
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('order-date').value = today;
   if (id) {
     const o = allOrders.find(x => x.id === id);
     if (o) {
@@ -904,6 +913,8 @@ function openOrderModal(id) {
       document.getElementById('order-remark').value = o.remark || '';
       document.getElementById('order-shipping-fee').value = o.shipping_fee || '';
       document.getElementById('order-tracking-no').value = o.tracking_no || '';
+      // 回填订单日期（取 created_at 的日期部分）
+      if (o.created_at) document.getElementById('order-date').value = o.created_at.slice(0, 10);
       document.getElementById('order-tracking-row').classList.toggle('hidden', o.status !== 'shipped');
       recalcOrderTotal();
       document.getElementById('order-owner-select').value = o.owner_name || '';
@@ -1022,7 +1033,8 @@ async function saveOrder() {
   }
   const btn = document.getElementById('btn-save-order'); btn.disabled = true; btn.textContent = '保存中…';
   try {
-    const orderNo = isEdit ? null : genOrderNo();
+    const orderDate = document.getElementById('order-date')?.value || '';
+    const orderNo = isEdit ? null : genOrderNo(orderDate);
     const status = isEdit ? document.getElementById('order-status').value : 'pending';
     const trackingNo = document.getElementById('order-tracking-no')?.value.trim() || null;
     const { data, error } = await sb.rpc('upsert_order', {
@@ -1051,6 +1063,25 @@ async function deleteOrder(id) {
     renderOrders(); renderInventory();
     showToast('订单已删除，库存已回滚', 'success');
   } catch (err) { showToast('删除失败:' + err.message, 'error'); }
+}
+
+async function markDelivered(id) {
+  if (!confirm('确认标记为"已送达"？')) return;
+  try {
+    const { error } = await sb.rpc('upsert_order', {
+      p_order_id: id,
+      p_order_no: null, p_customer_name: null, p_customer_phone: null,
+      p_customer_email: null, p_customer_address: null,
+      p_status: 'completed',
+      p_remark: null, p_owner_name: null, p_country: null,
+      p_tracking_no: null, p_items: [], p_feishu_user_id: feishuUid
+    });
+    if (error) throw error;
+    const idx = allOrders.findIndex(o => o.id === id);
+    if (idx >= 0) allOrders[idx].status = 'completed';
+    renderOrders();
+    showToast('已标记为已送达', 'success');
+  } catch (e) { showToast('操作失败：' + e.message, 'error'); }
 }
 
 // ============ 批量上传订单 ============
