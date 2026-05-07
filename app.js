@@ -821,7 +821,7 @@ function renderOrders() {
       </div>
       ${o.customer_address ? '<div class="text-xs text-gray-400 mb-2 truncate">📍 ' + addrHtml + '</div>' : ''}
       ${trackHtml}
-      <div class="border-t border-gray-100 mt-2 pt-2 space-y-1">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + esc(p.sku) : ''; return `<div class="flex items-center justify-between text-xs"><span class="truncate max-w-[60%]">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span><span class="text-gray-500 shrink-0">${((i.unit_price || 0) * i.quantity).toFixed(2)}元</span></div>`; }).join('')}</div>
+      <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 overflow-hidden">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + esc(p.sku) : ''; return `<div class="flex items-center justify-between text-xs min-w-0"><span class="truncate">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span><span class="text-gray-500 shrink-0 ml-2">${((i.unit_price || 0) * i.quantity).toFixed(2)}元</span></div>`; }).join('')}</div>
       <div class="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
         <span class="font-bold text-sm text-blue-600">合计：${total.toFixed(2)}元</span>
         <div class="flex items-center gap-1">${shipBtn}${btnHtml}</div>
@@ -2813,18 +2813,9 @@ function autoDetectSpecType(country) {
   }
   if (weights.length === 0) return '';
 
-  const isEurope = isEuropeanCountry(country);
+  // 澳大利亚判断放前面，避免被欧洲关键词误匹配
   const isAustralia = country.includes('澳大利亚') || country.includes('澳洲');
-  if (isEurope) {
-    const boxCapacity = parseInt(document.getElementById('ship-box-capacity')?.value) || 30;
-    const packagingId = document.getElementById('ship-packaging')?.value;
-    const pkg = weightProducts.find(x => x.id === packagingId);
-    const pkgWeight = pkg ? (pkg.gross_weight || pkg.net_weight || 0) : 0;
-    const numBoxes = Math.ceil(weights.length / boxCapacity);
-    if (numBoxes === 0) return '';
-    const avgWeight = (weights.reduce((s, w) => s + w, 0) + pkgWeight * numBoxes) / numBoxes;
-    return (avgWeight >= 10000 && avgWeight <= 20000) ? '大件' : '小件';
-  }
+  const isEurope = !isAustralia && isEuropeanCountry(country);
   if (isAustralia) {
     const packagingId = document.getElementById('ship-packaging')?.value;
     const pkg = weightProducts.find(x => x.id === packagingId);
