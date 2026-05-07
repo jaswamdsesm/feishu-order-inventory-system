@@ -2832,8 +2832,11 @@ async function autoCalcShipping() {
   if (!shippingTemplates || shippingTemplates.length === 0) {
     showToast('未找到运费模板，请先在运费助手配置', 'warning'); return;
   }
-  // 模糊匹配国家
-  let tpl = shippingTemplates.find(t => t.country && t.country.includes(country));
+  // 国家匹配：优先精确匹配，再前缀匹配，最后模糊包含
+  let tpl = shippingTemplates.find(t => t.country === country);
+  if (!tpl) tpl = shippingTemplates.find(t => t.country && t.country.startsWith(country));
+  if (!tpl) tpl = shippingTemplates.find(t => country && country.startsWith(t.country));
+  if (!tpl) tpl = shippingTemplates.find(t => t.country && t.country.includes(country));
   if (!tpl) tpl = shippingTemplates.find(t => country.includes(t.country));
   if (!tpl) { showToast(`未找到"${country}"的运费模板`, 'warning'); return; }
 
@@ -2945,18 +2948,23 @@ function calcShipping() {
 
   const totalBoxes = allBoxes.length;
 
-  // 分箱逻辑：允许偏差 ≤ 10 盒
+  // 分箱逻辑：
+  //   boxCapacity = 每箱最多装多少盒
+  //   余数 ≤ 10：允许塞进最后一箱（不浪费空间）
+  //   余数 > 10：不强行塞，多开一箱，尽量平分
   let numBoxes;
   const remainder = totalBoxes % boxCapacity;
   if (remainder === 0) {
     numBoxes = totalBoxes / boxCapacity;
   } else if (remainder <= 10) {
-    numBoxes = Math.ceil(totalBoxes / boxCapacity);
+    // 余数少，直接塞进最后一箱
+    numBoxes = Math.floor(totalBoxes / boxCapacity) + 1;
   } else {
+    // 余数多，多开一箱，后面会尽量平分
     numBoxes = Math.ceil(totalBoxes / boxCapacity);
   }
 
-  // 尽量平分到各箱
+  // 尽量平分到各箱（差异不超过1盒）
   const baseQty = Math.floor(totalBoxes / numBoxes);
   let extra = totalBoxes % numBoxes;
   let shipments = [];
