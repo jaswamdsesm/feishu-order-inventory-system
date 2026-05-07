@@ -808,10 +808,10 @@ function renderOrders() {
     return `<div class="order-card border ${sc[o.status] || 'border-gray-200'} rounded-xl p-4 bg-white shadow-sm">
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
-          <span class="font-bold text-sm">${esc(o.order_no)}</span>
+          <span class="font-bold text-base">${esc(o.order_no)}</span>
           <span class="text-xs px-2 py-0.5 rounded-full ${sc2[o.status] || ''} font-medium bg-opacity-50">${statusText(o.status)}</span>
         </div>
-        <span class="text-xs text-gray-600 font-medium">${(o.created_at || '').slice(0, 10)}</span>
+        <span class="text-sm text-gray-700 font-semibold">${(o.created_at || '').slice(0, 10)}</span>
       </div>
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mb-3">
         <span>👤 ${esc(o.customer_name)}</span>
