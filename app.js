@@ -822,7 +822,8 @@ function renderOrders() {
     const canShip = o.status === 'pending' && isAdmin;
     const shipBtn = canShip ? `<button onclick="openShipModal('${o.id}')" class="text-xs text-green-600 hover:underline mr-2">🚚 发货</button>` : '';
     const trackHtml = o.tracking_no ? `<p class="text-xs text-green-600">📦 单号：${esc(o.tracking_no)}</p>` : '';
-    const btnHtml = isAdmin ? `<button onclick="openOrderModal('${o.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteOrder('${o.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
+    const canEdit = isAdmin && !['shipped','completed'].includes(o.status);
+    const btnHtml = canEdit ? `<button onclick="openOrderModal('${o.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteOrder('${o.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
     const deliveredBtn = (o.status === 'shipped' && isAdmin) ? `<button onclick="markDelivered('${o.id}')" class="text-xs text-blue-600 hover:underline mr-2">📦 已送达</button>` : '';
     return `<div class="order-card border ${sc[o.status] || 'border-gray-200'} rounded-xl p-4 bg-white shadow-sm">
       <div class="flex items-center justify-between mb-3">
@@ -1087,7 +1088,8 @@ async function markDelivered(id) {
       p_customer_email: null, p_customer_address: null,
       p_status: 'completed',
       p_remark: null, p_owner_name: null, p_country: null,
-      p_tracking_no: null, p_items: [], p_feishu_user_id: feishuUid
+      p_tracking_no: null, p_items: [], p_feishu_user_id: feishuUid,
+      p_shipping_fee: 0, p_order_date: null
     });
     if (error) throw error;
     const idx = allOrders.findIndex(o => o.id === id);
