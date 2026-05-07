@@ -21,15 +21,15 @@ tailwind.config = {
   }
 }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif}
 .sidebar{transition:transform .25s ease}.sidebar-overlay{background:rgba(0,0,0,.3);z-index:40}
-.page{display:none}.page.active{display:block}.modal-backdrop{z-index:50;position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3)}.modal-backdrop.active{display:flex}
-#feishu-loading{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea,#764ba2)}
-.spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+.page{display:none!important}.page.active{display:block!important}#page-quote,#page-shipping{display:none!important}#page-quote.active,#page-shipping.active{display:flex!important;flex-direction:column}.modal-backdrop{z-index:50;position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3)}.modal-backdrop.active{display:flex}
+#feishu-loading{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#667eea,#764ba2)}
+#feishu-loading .loading-inner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:120px;text-align:center}
+.spinner{display:block;width:40px;height:40px;margin:0 auto 16px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .stock-warn{animation:pulse-warn 1.5s infinite}
 @keyframes pulse-warn{0%,100%{background:rgba(239,68,68,.08)}50%{background:rgba(239,68,68,.18)}}
@@ -55,7 +55,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
 
-<div id="feishu-loading"><div class="text-center text-white"><div class="spinner mb-4"></div><p class="text-lg font-medium">正在登录…</p></div></div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style><div id="feishu-loading" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#667eea,#764ba2)"><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:120px;text-align:center"><div style="display:block;width:40px;height:40px;margin:0 auto 16px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite"></div><p style="color:#fff;font-size:18px;font-weight:500;margin:0">正在登录…</p></div></div>
 
 <!-- 整体 flex 布局容器 -->
 <div class="flex min-h-screen">
@@ -64,7 +64,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
   <aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-56 bg-white border-r border-gray-100 flex flex-col -translate-x-full md:static md:translate-x-0 md:z-30">
     <div class="p-5 border-b border-gray-100 flex items-center gap-3">
       <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white font-bold text-[10px]">ERP</div>
-      <div><p class="font-bold text-sm">订单库存</p><p class="text-[10px] text-gray-400">Order & Inventory</p></div>
+      <div><p class="font-bold text-sm">订单库存管理系统</p><p class="text-[10px] text-gray-400">FZ-ERP</p></div>
     </div>
     <nav class="flex-1 py-4 overflow-y-auto">
       <p class="px-5 text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">菜单</p>
@@ -77,9 +77,15 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
       <button onclick="switchPage('orders')" class="nav-btn w-full flex items-center gap-3 px-5 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-none">
         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.241H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
         <span>订单管理</span></button>
-      <button onclick="switchPage('logs')" class="nav-btn w-full flex items-center gap-3 px-5 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-none">
+      <div id="nav-logs-only" class="hidden"><button onclick="switchPage('logs')" class="nav-btn w-full flex items-center gap-3 px-5 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-none">
         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <span>变动日志</span></button>
+        <span>变动日志</span></button></div>
+      <button onclick="switchPage('quote')" class="nav-btn w-full flex items-center gap-3 px-5 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-none">
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 7.5a.75.75 0 11.75-.75.75.75 0 01-.75.75zM15.75 12a.75.75 0 11.75-.75.75.75 0 01-.75.75zM15.75 16.5a.75.75 0 11.75-.75.75.75 0 01-.75.75zM6 7.5a.75.75 0 11.75-.75.75.75 0 01-.75.75zM6 12a.75.75 0 11.75-.75.75.75 0 01-.75.75zM6 16.5a.75.75 0 11.75-.75.75.75 0 01-.75.75zM5.25 3A2.25 2.25 0 003 5.25v13.5A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V5.25A2.25 2.25 0 0018.75 3H5.25z"/></svg>
+        <span>报价助手</span></button>
+      <button onclick="switchPage('shipping')" class="nav-btn w-full flex items-center gap-3 px-5 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-none">
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg>
+        <span>运费助手</span></button>
       <div id="nav-admin-only" class="hidden">
         <p class="px-5 pt-4 pb-1 text-xs text-gray-400 font-bold uppercase tracking-wider">管理</p>
         <button onclick="switchPage('users')" class="nav-btn w-full flex items-center gap-3 px-5 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-none"><svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
@@ -129,7 +135,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
       <div class="flex flex-col md:flex-row md:items-center gap-3">
         <div class="flex-1 relative"><input type="text" id="inventory-search" placeholder="搜索产品名称/简称/规格…" oninput="renderInventory()" class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
           <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg></div>
-        <div id="inventory-admin-btns" class="hidden flex gap-2"><button onclick="openProductModal()" class="btn-touch flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2.5 rounded-xl transition-colors font-medium whitespace-nowrap"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>新增产品</button><button onclick="openBatchProductModal()" class="btn-touch flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white text-sm px-4 py-2.5 rounded-xl transition-colors font-medium whitespace-nowrap"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-4.5L12 21m0 0l4.5-9m-4.5 9h7.5"/></svg>批量导入</button></div>
+        <div id="inventory-admin-btns" class="hidden flex gap-2"><button onclick="openProductModal()" class="btn-touch flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2.5 rounded-xl transition-colors font-medium whitespace-nowrap"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>新增产品</button><button onclick="openBatchProductModal()" class="btn-touch flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white text-sm px-4 py-2.5 rounded-xl transition-colors font-medium whitespace-nowrap"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-4.5L12 21m0 0l4.5-9m-4.5 9h7.5"/></svg>批量导入</button><button onclick="openBatchStockModal()" id="batch-stock-btn" class="btn-touch flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white text-sm px-4 py-2.5 rounded-xl transition-colors font-medium whitespace-nowrap"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5-3L16.5 18m0 0L12 13.5M16.5 18V4.5"/></svg>批量调整</button></div>
       </div>
       <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
@@ -144,10 +150,63 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
       <div class="flex flex-col md:flex-row md:items-center gap-3">
         <div class="flex-1 relative"><input type="text" id="order-search" placeholder="搜索订单号/客户名称…" oninput="renderOrders()" class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
           <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg></div>
-        <select id="order-status-filter" onchange="renderOrders()" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none"><option value="">全部状态</option><option value="pending">待处理</option><option value="shipped">已发货</option><option value="completed">已完成</option><option value="cancelled">已取消</option></select>
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- 状态筛选 - 自定义下拉 -->
+          <div class="relative" id="order-status-dropdown">
+            <button onclick="toggleDropdown('order-status-dropdown')" class="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white hover:bg-gray-50 transition-colors whitespace-nowrap min-w-[100px] justify-between">
+              <span id="order-status-label">全部状态</span>
+              <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+            </button>
+            <div class="hidden absolute top-full left-0 mt-1 w-32 bg-white rounded-xl border border-gray-200 shadow-lg z-30 py-1">
+              <div onclick="selectDropdown('order-status-dropdown','全部状态','');renderOrders()" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">全部状态</div>
+              <div onclick="selectDropdown('order-status-dropdown','待处理','pending');renderOrders()" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">待处理</div>
+              <div onclick="selectDropdown('order-status-dropdown','已发货','shipped');renderOrders()" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">已发货</div>
+              <div onclick="selectDropdown('order-status-dropdown','已完成','completed');renderOrders()" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">已完成</div>
+              <div onclick="selectDropdown('order-status-dropdown','已取消','cancelled');renderOrders()" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">已取消</div>
+            </div>
+          </div>
+          <!-- 归属销售筛选 -->
+          <select id="order-owner-filter" onchange="renderOrders()" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[100px]">
+            <option value="">全部销售</option>
+          </select>
+          <!-- 国家筛选 -->
+          <input type="text" id="order-country-filter" placeholder="国家筛选…" oninput="renderOrders()" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[90px]"/>
+          <!-- 日期筛选 -->
+          <input type="date" id="order-date-from" onchange="renderOrders()" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+          <span class="text-gray-300 text-xs">至</span>
+          <input type="date" id="order-date-to" onchange="renderOrders()" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+          <!-- 排序 - 自定义下拉 -->
+          <div class="relative" id="order-sort-dropdown">
+            <button onclick="toggleDropdown('order-sort-dropdown')" class="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white hover:bg-gray-50 transition-colors whitespace-nowrap min-w-[100px] justify-between">
+              <span id="order-sort-label">最新优先</span>
+              <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+            </button>
+            <div class="hidden absolute top-full left-0 mt-1 w-32 bg-white rounded-xl border border-gray-200 shadow-lg z-30 py-1">
+              <div onclick="selectSort('最新优先','created_at','desc')" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">最新优先</div>
+              <div onclick="selectSort('最早优先','created_at','asc')" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">最早优先</div>
+              <div onclick="selectSort('金额高→低','amount','desc')" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">金额高→低</div>
+              <div onclick="selectSort('金额低→高','amount','asc')" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">金额低→高</div>
+            </div>
+          </div>
+        </div>
         <div class="flex gap-2">
           <button id="btn-batch-upload-order" onclick="openBatchOrderModal()" class="btn-touch flex items-center gap-1 border border-gray-200 text-gray-600 text-sm px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>批量上传</button>
-          <button id="btn-export-orders" onclick="exportOrders()" class="btn-touch hidden items-center gap-1 border border-gray-200 text-gray-600 text-sm px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>导出</button>
+          <div class="relative" id="export-orders-dropdown">
+            <button onclick="toggleDropdown('export-orders-dropdown')" class="btn-touch hidden items-center gap-1 border border-gray-200 text-gray-600 text-sm px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>导出</button>
+            <div class="hidden absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 py-1 min-w-[140px]">
+              <button onclick="exportOrders('csv')" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors">CSV 导出</button>
+              <button onclick="exportOrders('txt')" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors">TXT 导出</button>
+              <button onclick="exportOrders('copy')" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors">复制到剪贴板</button>
+            </div>
+          </div>
+          <div class="relative" id="export-shipping-dropdown">
+            <button onclick="toggleDropdown('export-shipping-dropdown')" class="btn-touch hidden items-center gap-1 border border-orange-200 text-orange-600 text-sm px-3 py-2.5 rounded-xl hover:bg-orange-50 transition-colors whitespace-nowrap"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg>导出货运单</button>
+            <div class="hidden absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 py-1 min-w-[140px]">
+              <button onclick="exportShippingSheet('csv')" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors">CSV 导出</button>
+              <button onclick="exportShippingSheet('txt')" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors">TXT 导出</button>
+              <button onclick="exportShippingSheet('copy')" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors">复制到剪贴板</button>
+            </div>
+          </div>
           <button id="btn-add-order" onclick="openOrderModal()" class="btn-touch flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2.5 rounded-xl transition-colors font-medium whitespace-nowrap"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>新增订单</button>
         </div>
       </div>
@@ -156,10 +215,149 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
     </div>
 
     <!-- 变动日志 -->
-    <div id="page-logs" class="page flex-1 p-4 md:p-6 space-y-4 overflow-y-auto"><h2 class="font-bold text-lg">库存变动日志</h2><div id="logs-list" class="space-y-2"></div></div>
+    <div id="page-logs" class="page flex-1 p-4 md:p-6 space-y-4 overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <h2 class="font-bold text-lg">库存变动日志</h2>
+        <button id="btn-clear-logs" onclick="clearInventoryLogs()" class="hidden text-xs text-red-500 hover:text-red-700 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 transition-colors">清除测试日志</button>
+      </div>
+      <div id="logs-list" class="space-y-2"></div>
+    </div>
 
     <!-- 用户管理 -->
-    <div id="page-users" class="page flex-1 p-4 md:p-6 space-y-4 overflow-y-auto"><h2 class="font-bold text-lg">用户管理</h2><div id="users-list" class="space-y-2"></div></div>
+    <div id="page-users" class="page flex-1 p-4 md:p-6 space-y-4 overflow-y-auto">
+      <h2 class="font-bold text-lg">用户管理</h2>
+      <div id="users-list" class="space-y-2"></div>
+    </div>
+
+    <!-- 报价助手 -->
+    <div id="page-quote" class="page flex-1 overflow-hidden">
+      <div class="p-4 md:p-6 pb-3 flex-shrink-0">
+        <h2 class="font-bold text-lg mb-1">报价助手</h2>
+        <p class="text-xs text-gray-400 mb-3"></p>
+        <div class="flex gap-2">
+          <textarea id="quote-input" rows="3" placeholder="输入询价内容，每行一个，如：&#10;RT&#10;RT5 x3&#10;BPC157+TB500&#10;NAD+ 1000mg X 3" class="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm resize-none"></textarea>
+          <button onclick="handleQuoteSearch()" class="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-xl font-medium whitespace-nowrap">查询</button>
+        </div>
+        <div class="flex gap-2 mt-2 flex-wrap">
+          <button onclick="copyQuoteResult()" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">复制结果</button>
+          <button onclick="resetQuote()" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-red-500">重置</button>
+          <div class="relative inline-block" id="currency-dropdown-wrap">
+            <button onclick="toggleCurrencyDropdown()" class="text-xs px-3 py-1.5 rounded-lg border border-blue-300 hover:bg-blue-50 transition-colors text-blue-600">💱 汇率换算</button>
+            <div id="currency-dropdown" class="hidden absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[100px]">
+              <button onclick="appendCurrency('EUR')" class="block w-full text-left px-4 py-2 text-xs hover:bg-gray-50 transition-colors">🇪🇺 欧元 EUR</button>
+              <button onclick="appendCurrency('AUD')" class="block w-full text-left px-4 py-2 text-xs hover:bg-gray-50 transition-colors">🇦🇺 澳元 AUD</button>
+              <button onclick="appendCurrency('CAD')" class="block w-full text-left px-4 py-2 text-xs hover:bg-gray-50 transition-colors">🇨🇦 加元 CAD</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="quote-result" class="flex-1 overflow-y-auto px-4 md:px-6 pb-6 space-y-2">
+        <div class="text-center text-sm text-gray-300 mt-12">请输入询价内容</div>
+      </div>
+    </div>
+
+    <!-- 运费助手 -->
+    <div id="page-shipping" class="page flex-1 overflow-hidden">
+      <div class="p-4 md:p-6 pb-3 flex-shrink-0">
+        <h2 class="font-bold text-lg mb-1">运费助手</h2>
+        <p class="text-xs text-gray-400 mb-3">专线物流运费核算</p>
+        <div class="flex flex-col md:flex-row gap-3">
+          <div class="flex-1 space-y-3">
+            <div class="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+              <p class="text-xs text-gray-500 font-medium">输入参数</p>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">目的国家/地区 *</label>
+                  <select id="ship-country" onchange="updateChannelOptions()" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm">
+                    <option value="">请选择</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">物流渠道 *</label>
+                  <select id="ship-channel" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm">
+                    <option value="">请先选择国家</option>
+                  </select>
+                </div>
+              </div>
+              <div class="space-y-3">
+                <p class="text-xs text-gray-500 font-medium">产品条目</p>
+                <div id="ship-entries" class="space-y-2">
+                  <p class="text-xs text-gray-400">暂无产品条目，点击下方"新增条目"添加</p>
+                </div>
+                <button type="button" onclick="addShipEntry()" class="text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors">+ 新增条目</button>
+                <div class="flex items-center gap-4 text-sm">
+                  <span>总盒数：<strong id="ship-total-boxes">0</strong></span>
+                  <span id="ship-split-info" class="text-xs text-orange-600 hidden"></span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">外包装（统一）*</label>
+                <select id="ship-packaging" onchange="onShipPackagingChange(this.value)" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm">
+                  <option value="">请选择外包装</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">每箱容量（盒/箱）</label>
+                <input id="ship-box-capacity" type="text" readonly class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-500"/>
+                <p class="text-xs text-gray-400 mt-1">选择外包装后自动填入</p>
+              </div>
+              <button onclick="calcShipping()" class="w-full btn-touch py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">核算运费</button>
+            </div>
+          </div>
+          <div class="w-full md:w-48">
+            <div class="bg-orange-50 rounded-2xl border border-orange-100 p-4 space-y-2">
+              <p class="text-xs text-orange-600 font-medium">运费结果</p>
+              <div id="ship-result-price" class="text-2xl font-bold text-orange-600">-</div>
+              <div id="ship-result-detail" class="text-xs text-gray-500 space-y-1"></div>
+              <div id="ship-currency-wrap" class="hidden space-y-2">
+                <button onclick="toggleShipCurrencyDropdown()" class="w-full btn-touch py-2 rounded-xl bg-orange-100 hover:bg-orange-200 text-orange-700 text-sm font-bold tracking-wide">＋ 汇率换算</button>
+                <div id="ship-currency-dropdown" class="hidden bg-white border border-orange-200 rounded-xl shadow-lg text-sm overflow-hidden">
+                  <div class="px-4 py-2 hover:bg-orange-50 cursor-pointer font-medium" onclick="appendShipCurrency('EUR')">🇪🇺 EUR（€）欧元</div>
+                  <div class="px-4 py-2 hover:bg-orange-50 cursor-pointer font-medium" onclick="appendShipCurrency('AUD')">🇦🇺 AUD（A$）澳元</div>
+                  <div class="px-4 py-2 hover:bg-orange-50 cursor-pointer font-medium" onclick="appendShipCurrency('CAD')">🇨🇦 CAD（C$）加元</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-1 overflow-y-auto px-4 md:px-6 pb-6 space-y-4">
+        <!-- 产品重量库（仅管理员） -->
+        <div id="shipping-admin-section" class="space-y-4">
+        <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <p class="text-sm font-bold">产品重量库</p>
+            <button onclick="openWeightProductModal()" class="text-xs px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors">+ 新增产品</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm min-w-[400px]">
+              <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                <tr><th class="px-3 py-2 text-left">类型</th><th class="px-3 py-2 text-left">名称</th><th class="px-3 py-2 text-right">净重(g)</th><th class="px-3 py-2 text-right">含包装(g)</th><th class="px-3 py-2 text-right">容量</th><th class="px-3 py-2 text-center">操作</th></tr>
+              </thead>
+              <tbody id="weight-product-body"></tbody>
+            </table>
+          </div>
+          <div id="weight-product-empty" class="hidden py-8 text-center text-sm text-gray-400">暂无产品，点击上方"新增产品"添加</div>
+        </div>
+        <!-- 运费模板管理 -->
+        <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <p class="text-sm font-bold">运费模板管理</p>
+            <button onclick="openShippingTemplateModal()" class="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors">+ 新增模板</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm min-w-[600px]">
+              <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                <tr><th class="px-3 py-2 text-left">目的国家/地区</th><th class="px-3 py-2 text-left">渠道名称</th><th class="px-3 py-2 text-left">货币</th><th class="px-3 py-2 text-right">首重(g)</th><th class="px-3 py-2 text-right">首重价格</th><th class="px-3 py-2 text-right">续重单位(g)</th><th class="px-3 py-2 text-right">续重价格</th><th class="px-3 py-2 text-center">操作</th></tr>
+              </thead>
+              <tbody id="shipping-tpl-body"></tbody>
+            </table>
+          </div>
+          <div id="shipping-tpl-empty" class="hidden py-8 text-center text-sm text-gray-400">暂无运费模板，点击上方"新增模板"添加</div>
+        </div>
+        </div>
+      </div>
+    </div>
 
   </div><!-- /main-content -->
 
@@ -170,8 +368,59 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
   <button onclick="switchPage('dashboard')" class="mobile-nav-btn flex flex-col items-center py-1 px-3 text-xs text-gray-400"><svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>仪表盘</button>
   <button onclick="switchPage('inventory')" class="mobile-nav-btn flex flex-col items-center py-1 px-3 text-xs text-gray-400"><svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5"/></svg>库存</button>
   <button onclick="switchPage('orders')" class="mobile-nav-btn flex flex-col items-center py-1 px-3 text-xs text-gray-400"><svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.241H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>订单</button>
-  <button onclick="switchPage('logs')" class="mobile-nav-btn flex flex-col items-center py-1 px-3 text-xs text-gray-400"><svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>日志</button>
+  <button id="mobile-nav-logs" onclick="switchPage('logs')" class="mobile-nav-btn flex flex-col items-center py-1 px-3 text-xs text-gray-400"><svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>日志</button>
 </nav>
+
+<!-- 产品重量弹窗 -->
+<div id="modal-weight-product" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/30" style="z-index:60"><div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm max-h-[85vh] overflow-y-auto">
+  <div class="sticky top-0 bg-white px-5 py-4 border-b border-gray-100 flex items-center justify-between rounded-t-2xl z-10"><h3 id="weight-product-modal-title" class="font-bold">新增产品重量</h3><button onclick="closeModal('modal-weight-product')" class="text-gray-400 text-2xl w-8 h-8 flex items-center justify-center">×</button></div>
+  <div class="p-5 space-y-4">
+    <input type="hidden" id="wp-id"/>
+    <div>
+      <label class="block text-xs text-gray-500 mb-1">类型 *</label>
+      <div class="flex gap-4">
+        <label class="inline-flex items-center gap-1.5 text-sm"><input type="radio" name="wp-type" value="product" checked onchange="onWeightProductTypeChange()" class="accent-blue-600">产品</label>
+        <label class="inline-flex items-center gap-1.5 text-sm"><input type="radio" name="wp-type" value="packaging" onchange="onWeightProductTypeChange()" class="accent-blue-600">外包装</label>
+      </div>
+    </div>
+    <div><label class="block text-xs text-gray-500 mb-1">名称 *</label><input id="wp-name" type="text" placeholder="如 Pinealon 10mg / 小盒子" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="block text-xs text-gray-500 mb-1">净重 (g) *</label><input id="wp-net-weight" type="number" min="0" step="0.1" placeholder="如 15" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
+      <div><label class="block text-xs text-gray-500 mb-1">含包装 (g)</label><input id="wp-gross-weight" type="number" min="0" step="0.1" placeholder="如 25" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
+    </div>
+    <div id="wp-capacity-wrap"><label class="block text-xs text-gray-500 mb-1">箱子容量 (盒/箱)</label><input id="wp-capacity" type="number" min="0" placeholder="如 30" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
+    <p id="wp-capacity-hint" class="text-xs text-gray-400 hidden">外包装类产品请填写容量，用于运费核算参考</p>
+    <div class="flex gap-3 pt-2">
+      <button onclick="closeModal('modal-weight-product')" class="flex-1 btn-touch py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500">取消</button>
+      <button onclick="saveWeightProduct()" class="flex-1 btn-touch py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-medium">保存</button>
+    </div>
+  </div></div></div>
+
+<!-- 运费模板弹窗 -->
+<div id="modal-shipping-tpl" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/30" style="z-index:60"><div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-y-auto">
+  <div class="sticky top-0 bg-white px-5 py-4 border-b border-gray-100 flex items-center justify-between rounded-t-2xl z-10"><h3 id="shipping-tpl-modal-title" class="font-bold">新增运费模板</h3><button onclick="closeModal('modal-shipping-tpl')" class="text-gray-400 text-2xl w-8 h-8 flex items-center justify-center">×</button></div>
+  <div class="p-5 space-y-4">
+    <input type="hidden" id="stpl-id"/>
+    <div><label class="block text-xs text-gray-500 mb-1">目的国家/地区 *</label><input id="stpl-country" type="text" placeholder="如 澳大利亚、美国、英国" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="block text-xs text-gray-500 mb-1">渠道名称 *</label><input id="stpl-channel" type="text" placeholder="如 澳洲专线、美线普货" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
+      <div><label class="block text-xs text-gray-500 mb-1">计价货币 *</label><select id="stpl-currency" onchange="updatePriceLabels()" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm">
+        <option value="USD">USD ($)</option><option value="AUD">AUD (A$)</option><option value="CNY">CNY (¥)</option><option value="EUR">EUR (€)</option><option value="GBP">GBP (£)</option>
+      </select></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="block text-xs text-gray-500 mb-1">首重 (g) *</label><input id="stpl-first-w" type="number" min="1" placeholder="500" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
+      <div><label class="block text-xs text-gray-500 mb-1" id="lbl-first-p">首重价格 ($) *</label><input id="stpl-first-p" type="number" min="0" step="0.01" placeholder="25.00" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="block text-xs text-gray-500 mb-1">续重单位 (g) *</label><input id="stpl-add-w" type="number" min="1" placeholder="500" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
+      <div><label class="block text-xs text-gray-500 mb-1" id="lbl-add-p">续重价格 ($) *</label><input id="stpl-add-p" type="number" min="0" step="0.01" placeholder="8.00" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
+    </div>
+    <div class="flex gap-3 pt-2">
+      <button onclick="closeModal('modal-shipping-tpl')" class="flex-1 btn-touch py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500">取消</button>
+      <button onclick="saveShippingTemplate()" id="btn-save-stpl" class="flex-1 btn-touch py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">保存</button>
+    </div>
+  </div></div></div>
 
 <!-- 产品弹窗 -->
 <div id="modal-product" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/30" style="z-index:60"><div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-y-auto">
@@ -187,19 +436,26 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
   </div></div></div>
 
 <!-- 订单弹窗 -->
-<div id="modal-order" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/30" style="z-index:60"><div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-  <div class="sticky top-0 bg-white px-5 py-4 border-b border-gray-100 flex items-center justify-between rounded-t-2xl z-10"><h3 id="order-modal-title" class="font-bold">新增订单</h3><button onclick="closeModal('modal-order')" class="text-gray-400 text-2xl w-8 h-8 flex items-center justify-center">×</button></div>
-  <div class="p-5 space-y-4"><input type="hidden" id="order-id"/>
+<div id="modal-order" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/30" style="z-index:60"><div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+  <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between rounded-t-2xl flex-shrink-0"><h3 id="order-modal-title" class="font-bold">新增订单</h3><button onclick="closeModal('modal-order')" class="text-gray-400 text-2xl w-8 h-8 flex items-center justify-center">×</button></div>
+  <div class="p-5 space-y-4 overflow-y-auto flex-1"><input type="hidden" id="order-id"/>
     <div class="bg-gray-50 rounded-xl p-4 space-y-3"><p class="text-xs text-gray-500 font-medium">客户信息</p>
       <input id="order-customer-name" type="text" placeholder="客户姓名 *" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
-      <input id="order-customer-phone" type="tel" placeholder="联系电话" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
+      <div class="grid grid-cols-2 gap-2">
+        <input id="order-customer-phone" type="tel" placeholder="联系电话" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
+        <input id="order-customer-country" type="text" placeholder="国家（选填）" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
+      </div>
       <input id="order-customer-email" type="email" placeholder="电子邮箱（选填）" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
-      <textarea id="order-customer-addr" rows="2" placeholder="收货地址 *" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm resize-none"></textarea></div>
+      <textarea id="order-customer-addr" rows="2" placeholder="收货地址 *" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm resize-none"></textarea>
+      <select id="order-owner-select" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm bg-white">
+        <option value="">归属销售（选填）</option>
+      </select></div>
     <div><div class="flex items-center justify-between mb-2"><p class="text-xs text-gray-500 font-medium">产品明细</p><button onclick="addOrderItemRow()" class="text-xs text-blue-500 hover:text-blue-700 font-medium">+ 添加产品</button></div><div id="order-items-container" class="space-y-2"></div></div>
     <div id="order-status-row" class="hidden"><label class="block text-xs text-gray-500 mb-1">订单状态</label><select id="order-status" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none"><option value="pending">待处理</option><option value="shipped">已发货</option><option value="completed">已完成</option><option value="cancelled">已取消</option></select></div>
     <div><label class="block text-xs text-gray-500 mb-1">备注</label><textarea id="order-remark" rows="2" placeholder="选填" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm resize-none"></textarea></div>
-    <div class="flex gap-3 pt-2"><button onclick="closeModal('modal-order')" class="flex-1 btn-touch py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500">取消</button><button onclick="saveOrder()" id="btn-save-order" class="flex-1 btn-touch py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">保存订单</button></div>
-  </div></div></div>
+  </div>
+  <div class="flex gap-3 px-5 py-4 border-t border-gray-100 flex-shrink-0"><button onclick="closeModal('modal-order')" class="flex-1 btn-touch py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500">取消</button><button onclick="saveOrder()" id="btn-save-order" class="flex-1 btn-touch py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">保存订单</button></div>
+</div></div>
 
 <!-- 批量上传弹窗 -->
 <div id="modal-batch-order" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/30" style="z-index:60"><div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
@@ -235,7 +491,9 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
   </div>
 </div></div>
 
-<script src="app.js"></script>
+<script async src="https://lf-scm-cn.feishucdn.com/lark/op/h5-js-sdk-1.5.44.js"></script>
+<script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js?v=20260508a1"></script>
 
 <!-- 批量导入产品弹窗 -->
 <div id="modal-batch-product" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/30" style="z-index:60">
@@ -262,6 +520,40 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
       <p id="batch-product-count" class="text-xs text-gray-400 mt-1"></p>
       <p id="batch-product-errors" class="text-xs text-red-500 mt-1"></p>
     </div>
+  </div>
+</div></div>
+
+<!-- 批量调整库存弹窗 -->
+<div id="modal-batch-stock" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/30" style="z-index:60">
+<div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col">
+  <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between rounded-t-2xl flex-shrink-0">
+    <h3 class="font-bold">批量调整库存</h3>
+    <button onclick="closeModal('modal-batch-stock')" class="text-gray-400 text-2xl w-8 h-8 flex items-center justify-center">×</button>
+  </div>
+  <div class="p-5 space-y-4 overflow-y-auto flex-1">
+    <div id="batch-stock-selected-info" class="bg-blue-50 rounded-lg p-3 text-sm text-blue-700"></div>
+    <div>
+      <label class="block text-xs text-gray-500 mb-1">调整方式</label>
+      <div class="flex gap-2">
+        <button onclick="setBatchStockMode('increase')" id="bs-mode-inc" class="flex-1 btn-touch py-2 rounded-lg border-2 border-green-500 bg-green-50 text-green-700 text-sm font-medium">➕ 增加库存</button>
+        <button onclick="setBatchStockMode('decrease')" id="bs-mode-dec" class="flex-1 btn-touch py-2 rounded-lg border-2 border-gray-200 text-gray-500 text-sm font-medium">➖ 减少库存</button>
+      </div>
+    </div>
+    <div>
+      <label class="block text-xs text-gray-500 mb-1" id="bs-qty-label">增加数量</label>
+      <input type="number" id="batch-stock-qty" min="1" value="1" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm text-center text-lg" />
+    </div>
+    <div id="batch-stock-preview" class="hidden">
+      <p class="text-sm font-medium text-gray-700 mb-2">预览</p>
+      <div class="overflow-x-auto max-h-48 border border-gray-100 rounded-lg">
+        <table class="w-full text-xs"><thead id="batch-stock-head"></thead><tbody id="batch-stock-body"></tbody></table>
+      </div>
+      <p id="batch-stock-count" class="text-xs text-gray-400 mt-1"></p>
+    </div>
+  </div>
+  <div class="flex gap-3 px-5 py-4 border-t border-gray-100 flex-shrink-0">
+    <button onclick="closeModal('modal-batch-stock')" class="flex-1 btn-touch py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500">取消</button>
+    <button id="btn-confirm-batch-stock" onclick="saveBatchStock()" class="flex-1 btn-touch py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-medium">确认调整</button>
   </div>
 </div></div>
 
