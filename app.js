@@ -2729,15 +2729,15 @@ function updateShipTotal() {
   const pkgSel = document.getElementById('ship-packaging');
   const pkgName = pkgSel ? (pkgSel.options[pkgSel.selectedIndex]?.text || '') : '';
   const remainder = total % boxCap;
-  let numBoxes;
-  if (remainder === 0) {
-    numBoxes = total / boxCap;
-  } else if (remainder <= 10) {
-    numBoxes = Math.ceil(total / boxCap);
-  } else {
-    numBoxes = Math.ceil(total / boxCap);
+  let numBoxes = Math.ceil(total / boxCap);
+  // 尽量均分：计算每箱基础数量，余数分散到前几箱
+  const baseQty = Math.floor(total / numBoxes);
+  const extra = total % numBoxes;
+  const boxDetails = [];
+  for (let b = 0; b < numBoxes; b++) {
+    boxDetails.push(baseQty + (b < extra ? 1 : 0));
   }
-  info.textContent = `总盒数 ${total}，预计分 ${numBoxes} 箱（每箱 ${boxCap} 盒）`;
+  info.textContent = `总盒数 ${total}，分 ${numBoxes} 箱（${boxDetails.join('+')}）`;
   info.classList.remove('hidden');
 }
 
@@ -3188,22 +3188,57 @@ async function autoCalcShipping() {
   const boxCapacity = selectedPkg.capacity || 30;
   const pkgWeight = selectedPkg.gross_weight || selectedPkg.net_weight || 0;
 
-  // 第三步：分箱（同时约束：盒数 ≤ 箱子容量，重量严格 < 22KG）
-  const MAX_BOX_WEIGHT = 21999; // 严格小于 22KG
-  const boxes = []; // 每个元素是一箱内的盒子重量数组
-  let currentBox = [];
-  let currentWeight = 0; // 当前箱的盒子总重量（不含箱子自重）
-  for (const w of vialWeightList) {
-    const wouldBeWeight = currentWeight + w + pkgWeight;
-    if (currentBox.length >= boxCapacity || (currentBox.length > 0 && wouldBeWeight > MAX_BOX_WEIGHT)) {
-      boxes.push(currentBox);
-      currentBox = [];
-      currentWeight = 0;
-    }
-    currentBox.push(w);
-    currentWeight += w;
+  // 第三步：分箱（尽量均分，同时约束：盒数 ≤ 箱子容量，重量严格 < 22KG）
+  const MAX_BOX_WEIGHT = 21999;
+
+  // 先按重量排序，交叉分配（轻+重+轻+重）让每箱总重量尽量均衡
+  const sorted = [...vialWeightList].sort((a, b) => a - b);
+  const interleaved = [];
+  let lo = 0, hi = sorted.length - 1;
+  while (lo <= hi) {
+    if (lo === hi) { interleaved.push(sorted[lo]); break; }
+    interleaved.push(sorted[lo++]);
+    interleaved.push(sorted[hi--]);
   }
-  if (currentBox.length > 0) boxes.push(currentBox);
+
+  // 计算最少箱数，尝试均分；重量或容量超限则增加箱数
+  let numBoxes = Math.ceil(totalVials / boxCapacity);
+  let boxes = [];
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const baseQty = Math.floor(totalVials / numBoxes);
+    let extra = totalVials % numBoxes;
+    const shipments = [];
+    let idx = 0;
+    for (let b = 0; b < numBoxes; b++) {
+      const qty = baseQty + (b < extra ? 1 : 0);
+      shipments.push(interleaved.slice(idx, idx + qty));
+      idx += qty;
+    }
+    const allValid = shipments.every(ch =>
+      ch.length <= boxCapacity &&
+      ch.reduce((s, w) => s + w, 0) + pkgWeight <= MAX_BOX_WEIGHT
+    );
+    if (allValid) { boxes = shipments; break; }
+    numBoxes++;
+  }
+
+  // 降级：均分无法满足约束时退回到贪心算法
+  if (boxes.length === 0) {
+    boxes = [];
+    let currentBox = [];
+    let currentWeight = 0;
+    for (const w of vialWeightList) {
+      const wouldBeWeight = currentWeight + w + pkgWeight;
+      if (currentBox.length >= boxCapacity || (currentBox.length > 0 && wouldBeWeight > MAX_BOX_WEIGHT)) {
+        boxes.push(currentBox);
+        currentBox = [];
+        currentWeight = 0;
+      }
+      currentBox.push(w);
+      currentWeight += w;
+    }
+    if (currentBox.length > 0) boxes.push(currentBox);
+  }
 
   // 计算每箱实际重量（含箱子）
   const boxWeights = boxes.map(ch => ch.reduce((s, w) => s + w, 0) + pkgWeight);
