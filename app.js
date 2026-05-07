@@ -2813,8 +2813,25 @@ async function autoCalcShipping() {
   let tpl = shippingTemplates.find(t => t.country && t.country.includes(country));
   if (!tpl) tpl = shippingTemplates.find(t => country.includes(t.country));
   if (!tpl) { showToast(`未找到"${country}"的运费模板`, 'warning'); return; }
-  // 计算总重量：遍历订单项，从 weightProducts 按名称匹配重量
+
+  // 产品名称 → 重量库类别 映射规则
+  function getWeightCategory(productName) {
+    const n = (productName || '').toLowerCase();
+    // 3ML水：Acetic Acid / AA / 3ml×10vials，BAC Water WA3/BA3 3ml
+    if (n.includes('acetic') || (n.includes('aa') && n.includes('3ml'))) return '3ML水';
+    if (n.includes('bac') && (n.includes('wa3') || n.includes('ba3') || n.includes('3ml'))) return '3ML水';
+    // 10ML水：BAC Water WA10/BA10 10ml×10vials
+    if (n.includes('bac') && (n.includes('wa10') || n.includes('ba10') || n.includes('10ml'))) return '10ML水';
+    // 大冻干粉（NAD、HCG）10ML瓶：NAD+ NJ500/NJ1000，Glutathione GTT1500
+    if (n.includes('nad') || n.includes('nj500') || n.includes('nj1000')) return '大冻干粉（NAD、HCG）10ML瓶';
+    if (n.includes('glutathione') || n.includes('gtt1500')) return '大冻干粉（NAD、HCG）10ML瓶';
+    // 默认：冻干粉
+    return '冻干粉';
+  }
+
+  // 计算总重量：遍历订单项，按映射规则从 weightProducts 取重量
   let totalWeight = 0;
+  let unmatchedProducts = [];
   const container = document.getElementById('order-items-container');
   container.querySelectorAll('div[id^="item-row-"]').forEach(row => {
     const idx = row.id.replace('item-row-', '');
@@ -2822,15 +2839,21 @@ async function autoCalcShipping() {
     if (!pid) return;
     const product = allProducts.find(p => p.id === pid);
     if (!product) return;
-    const wp = weightProducts.find(w => w.type !== 'packaging' &&
-      (w.name === product.name || product.name.includes(w.name) || w.name.includes(product.name)));
-    if (!wp) return;
+    const category = getWeightCategory(product.name);
+    const wp = weightProducts.find(w => w.type !== 'packaging' && w.name === category);
+    if (!wp) {
+      unmatchedProducts.push(product.name + `（需重量库有"${category}"）`);
+      return;
+    }
     const qty = parseFloat(document.getElementById(`item-qty-${idx}`)?.value) || 0;
     const w = wp.gross_weight || wp.net_weight || 0;
     totalWeight += w * qty;
   });
   if (totalWeight === 0) {
-    showToast('未找到产品重量，请先在产品重量库配置', 'warning'); return;
+    const tip = unmatchedProducts.length > 0
+      ? `请在产品重量库中添加以下类别：${unmatchedProducts.join('、')}`
+      : '请在产品重量库中添加"冻干粉 / 3ML水 / 10ML水 / 大冻干粉（NAD、HCG）10ML瓶"中的对应类别';
+    showToast(tip, 'warning'); return;
   }
   // 用首重+续重计算运费
   const firstW = tpl.first_unit_qty ?? tpl.first_weight ?? 500;
@@ -2847,7 +2870,13 @@ async function autoCalcShipping() {
   document.getElementById('order-shipping-fee').value = freight.toFixed(2);
   recalcOrderTotal();
   const sym = curSym(tpl.currency || 'USD');
-  showToast(`运费估算：${sym}${freight.toFixed(2)}（${tpl.country}·${tpl.channel}）`, 'success');
+  let msg = `运费估算：${sym}${freight.toFixed(2)}（${tpl.country}·${tpl.channel}）`;
+  if (unmatchedProducts.length > 0) {
+    msg += `；以下产品未匹配类别：${unmatchedProducts.join('、')}`;
+    showToast(msg, 'warning');
+  } else {
+    showToast(msg, 'success');
+  }
 }
 
 function curSym(currency) {
