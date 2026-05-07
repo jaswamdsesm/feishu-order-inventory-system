@@ -801,12 +801,88 @@ function renderOrders() {
     const addrHtml = phoneHidden ? (o.customer_address ? '***' : '') : esc(o.customer_address || '');
     const sc = { pending: 'border-yellow-300 bg-yellow-50', shipped: 'border-blue-300 bg-blue-50', completed: 'border-green-300 bg-green-50', cancelled: 'border-gray-200 bg-gray-50' };
     const sc2 = { pending: 'text-yellow-600', shipped: 'text-blue-600', completed: 'text-green-600', cancelled: 'text-gray-400' };
+    const canShip = o.status === 'pending' && isAdmin;
+    const shipBtn = canShip ? `<button onclick="openShipModal('${o.id}')" class="text-xs text-green-600 hover:underline mr-2">🚚 发货</button>` : '';
+    const trackHtml = o.tracking_no ? `<p class="text-xs text-green-600">📦 单号：${esc(o.tracking_no)}</p>` : '';
     const btnHtml = isAdmin ? `<button onclick="openOrderModal('${o.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteOrder('${o.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
-    return `<div class="order-card border ${sc[o.status] || 'border-gray-200'} rounded-xl p-4"><div class="flex items-start justify-between mb-2"><div><p class="font-bold text-sm">${esc(o.order_no)}</p><p class="text-xs text-gray-400">${esc(o.customer_name)}</p>${o.owner_name ? '<p class="text-xs text-blue-400">归属：' + esc(o.owner_name) + '</p>' : ''}</div><div class="text-right"><span class="text-xs px-2 py-1 rounded-full ${sc2[o.status] || ''} font-medium">${statusText(o.status)}</span><p class="text-xs text-gray-400 mt-1">${(o.created_at || '').slice(0, 10)}</p></div></div><div class="text-xs text-gray-500 space-y-0.5 mb-2"><p>📞 ${phoneHtml || '未填写'}</p><p>📍 ${addrHtml || '未填写'}</p>${o.country ? '<p>🌍 ' + esc(o.country) + '</p>' : ''}</div><div class="border-t border-gray-100 pt-2 space-y-1">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + esc(p.sku) : ''; return `<div class="flex items-center justify-between text-xs"><span>${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span><span class="text-gray-500">${((i.unit_price || 0) * i.quantity).toFixed(2)}元</span></div>`; }).join('')}</div><div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100"><span class="font-bold text-sm text-blue-600">合计：${total.toFixed(2)}元</span>${btnHtml}</div></div>`;
+    return `<div class="order-card border ${sc[o.status] || 'border-gray-200'} rounded-xl p-4 bg-white shadow-sm">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-sm">${esc(o.order_no)}</span>
+          <span class="text-xs px-2 py-0.5 rounded-full ${sc2[o.status] || ''} font-medium bg-opacity-50">${statusText(o.status)}</span>
+        </div>
+        <span class="text-xs text-gray-400">${(o.created_at || '').slice(0, 10)}</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mb-3">
+        <span>👤 ${esc(o.customer_name)}</span>
+        <span>📞 ${phoneHtml || '—'}</span>
+        ${o.country ? '<span>🌍 ' + esc(o.country) + '</span>' : ''}
+        ${o.owner_name ? '<span class="text-blue-400">归属：' + esc(o.owner_name) + '</span>' : ''}
+      </div>
+      ${o.customer_address ? '<div class="text-xs text-gray-400 mb-2 truncate">📍 ' + addrHtml + '</div>' : ''}
+      ${trackHtml}
+      <div class="border-t border-gray-100 mt-2 pt-2 space-y-1">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + esc(p.sku) : ''; return `<div class="flex items-center justify-between text-xs"><span class="truncate max-w-[60%]">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span><span class="text-gray-500 shrink-0">${((i.unit_price || 0) * i.quantity).toFixed(2)}元</span></div>`; }).join('')}</div>
+      <div class="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
+        <span class="font-bold text-sm text-blue-600">合计：${total.toFixed(2)}元</span>
+        <div class="flex items-center gap-1">${shipBtn}${btnHtml}</div>
+      </div>
+    </div>`;
   }).join('');
 }
 
 function statusText(s) { return { pending: '待处理', shipped: '已发货', completed: '已完成', cancelled: '已取消' }[s] || s; }
+
+function openShipModal(orderId) {
+  const o = allOrders.find(x => x.id === orderId);
+  if (!o) return;
+  document.getElementById('ship-modal-title').textContent = '发货 — ' + o.order_no;
+  document.getElementById('ship-order-no').textContent = o.order_no;
+  document.getElementById('ship-tracking-no').value = o.tracking_no || '';
+  document.getElementById('btn-confirm-ship').dataset.orderId = orderId;
+  openModal('modal-ship');
+  setTimeout(() => document.getElementById('ship-tracking-no')?.focus(), 100);
+}
+
+async function confirmShip() {
+  const btn = document.getElementById('btn-confirm-ship');
+  const orderId = btn.dataset.orderId;
+  if (!orderId) return;
+  const trackingNo = document.getElementById('ship-tracking-no').value.trim();
+  if (!trackingNo) { showToast('请输入快递单号', 'warning'); return; }
+  btn.disabled = true; btn.textContent = '提交中…';
+  try {
+    const { data, error } = await sb.rpc('upsert_order', {
+      p_order_id: orderId,
+      p_order_no: null,
+      p_customer_name: null,
+      p_customer_phone: null,
+      p_customer_email: null,
+      p_customer_address: null,
+      p_status: 'shipped',
+      p_remark: null,
+      p_owner_name: null,
+      p_country: null,
+      p_tracking_no: trackingNo,
+      p_items: [],
+      p_feishu_user_id: feishuUid
+    });
+    if (error) throw error;
+    const idx = allOrders.findIndex(o => o.id === orderId);
+    if (idx >= 0) { allOrders[idx].status = 'shipped'; allOrders[idx].tracking_no = trackingNo; }
+    closeModal('modal-ship');
+    renderOrders();
+    showToast('已标记为已发货', 'success');
+  } catch (e) {
+    showToast('操作失败：' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '确认发货';
+  }
+}
+
+function toggleTrackingRow() {
+  const status = document.getElementById('order-status')?.value;
+  document.getElementById('order-tracking-row')?.classList.toggle('hidden', status !== 'shipped');
+}
 
 function openOrderModal(id) {
   editingOrderId = id || null;
@@ -827,6 +903,8 @@ function openOrderModal(id) {
       document.getElementById('order-status').value = o.status || 'pending';
       document.getElementById('order-remark').value = o.remark || '';
       document.getElementById('order-shipping-fee').value = o.shipping_fee || '';
+      document.getElementById('order-tracking-no').value = o.tracking_no || '';
+      document.getElementById('order-tracking-row').classList.toggle('hidden', o.status !== 'shipped');
       recalcOrderTotal();
       document.getElementById('order-owner-select').value = o.owner_name || '';
       const items = allOrderItems.filter(i => i.order_id === id);
@@ -946,12 +1024,13 @@ async function saveOrder() {
   try {
     const orderNo = isEdit ? null : genOrderNo();
     const status = isEdit ? document.getElementById('order-status').value : 'pending';
+    const trackingNo = document.getElementById('order-tracking-no')?.value.trim() || null;
     const { data, error } = await sb.rpc('upsert_order', {
       p_order_id: editingOrderId || null, p_order_no: orderNo,
       p_customer_name: name, p_customer_phone: phone, p_customer_email: email,
       p_customer_address: addr, p_status: status, p_remark: remark,
       p_owner_name: ownerName || null, p_country: country || null,
-      p_serial_no: null, p_items: items, p_feishu_user_id: feishuUid,
+      p_tracking_no: trackingNo, p_items: items, p_feishu_user_id: feishuUid,
       p_shipping_fee: parseFloat(document.getElementById('order-shipping-fee')?.value) || 0
     });
     if (error) throw error;

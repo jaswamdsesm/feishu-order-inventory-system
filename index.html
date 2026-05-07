@@ -467,7 +467,8 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
         <button onclick="autoCalcShipping()" class="btn-touch whitespace-nowrap px-3 py-2.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 text-xs font-bold">📦 自动算运费</button>
       </div></div>
     <div><div class="flex items-center justify-between mb-2"><p class="text-xs text-gray-500 font-medium">产品明细</p><div class="flex gap-2"><button onclick="autoQuoteOrder()" class="text-xs text-green-600 hover:text-green-800 font-bold">⚡ 自动报价</button><button onclick="addOrderItemRow()" class="text-xs text-blue-500 hover:text-blue-700 font-medium">+ 添加产品</button></div></div><div id="order-items-container" class="space-y-2"></div></div>
-    <div id="order-status-row" class="hidden"><label class="block text-xs text-gray-500 mb-1">订单状态</label><select id="order-status" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none"><option value="pending">待处理</option><option value="shipped">已发货</option><option value="completed">已完成</option><option value="cancelled">已取消</option></select></div>
+    <div id="order-status-row" class="hidden"><label class="block text-xs text-gray-500 mb-1">订单状态</label><select id="order-status" onchange="toggleTrackingRow()" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none"><option value="pending">待处理</option><option value="shipped">已发货</option><option value="completed">已完成</option><option value="cancelled">已取消</option></select></div>
+    <div id="order-tracking-row" class="hidden"><label class="block text-xs text-gray-500 mb-1">快递单号</label><input id="order-tracking-no" type="text" placeholder="快递单号" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
     <div><label class="block text-xs text-gray-500 mb-1">备注</label><textarea id="order-remark" rows="2" placeholder="选填" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm resize-none"></textarea></div>
     <!-- 价格汇总 -->
     <div class="bg-blue-50 rounded-xl p-4 space-y-2">
@@ -483,6 +484,30 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
   </div>
   <div class="flex gap-3 px-5 py-4 border-t border-gray-100 flex-shrink-0"><button onclick="closeModal('modal-order')" class="flex-1 btn-touch py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500">取消</button><button onclick="saveOrder()" id="btn-save-order" class="flex-1 btn-touch py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">保存订单</button></div>
 </div></div>
+
+<!-- 发货弹窗 -->
+<div id="modal-ship" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/30" style="z-index:60">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between rounded-t-2xl">
+      <h3 class="font-bold" id="ship-modal-title">发货</h3>
+      <button onclick="closeModal('modal-ship')" class="text-gray-400 text-2xl w-8 h-8 flex items-center justify-center">×</button>
+    </div>
+    <div class="p-5 space-y-4">
+      <div>
+        <p class="text-xs text-gray-500 mb-1">订单号</p>
+        <p class="text-sm font-medium" id="ship-order-no"></p>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">快递单号 *</label>
+        <input id="ship-tracking-no" type="text" placeholder="输入快递单号" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button onclick="closeModal('modal-ship')" class="flex-1 btn-touch py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500">取消</button>
+        <button onclick="confirmShip()" id="btn-confirm-ship" class="flex-1 btn-touch py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-medium">确认发货</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- 批量上传弹窗 -->
 <div id="modal-batch-order" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/30" style="z-index:60"><div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
