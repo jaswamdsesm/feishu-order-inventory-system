@@ -2604,6 +2604,7 @@ function onShipEntryQtyChange(id, val) {
   const e = shipEntries.find(x => x.id === id);
   if (e) e.qty = parseInt(val) || 1;
   updateShipTotal();
+  updateChannelOptions();
 }
 
 function onShipEntryPackagingChange(id, val) {
@@ -2614,11 +2615,13 @@ function onShipPackagingChange(pkgId) {
   const capInput = document.getElementById('ship-box-capacity');
   if (!pkgId) {
     capInput.value = '';
+    updateChannelOptions();
     return;
   }
   const pkg = weightProducts.find(p => p.id === pkgId);
   capInput.value = pkg && pkg.capacity ? pkg.capacity : '';
   updateShipTotal();
+  updateChannelOptions();
 }
 
 function updateShipTotal() {
@@ -2675,6 +2678,7 @@ function renderShipEntries() {
     </div>`;
   }).join('');
   updateShipTotal();
+  updateChannelOptions();
 }
 
 function openWeightProductModal(id) {
@@ -2797,26 +2801,67 @@ function renderShippingPage() {
   renderWeightProducts();
 }
 
+function autoDetectSpecType(country) {
+  if (!country) return '';
+  const weights = [];
+  for (const e of shipEntries) {
+    if (!e.productId || !e.qty) continue;
+    const p = weightProducts.find(w => w.id === e.productId && w.type !== 'packaging');
+    if (!p) continue;
+    const w = p.gross_weight || p.net_weight || 0;
+    for (let i = 0; i < e.qty; i++) weights.push(w);
+  }
+  if (weights.length === 0) return '';
+
+  const isEurope = isEuropeanCountry(country);
+  const isAustralia = country.includes('澳大利亚') || country.includes('澳洲');
+  if (isEurope) {
+    const boxCapacity = parseInt(document.getElementById('ship-box-capacity')?.value) || 30;
+    const packagingId = document.getElementById('ship-packaging')?.value;
+    const pkg = weightProducts.find(x => x.id === packagingId);
+    const pkgWeight = pkg ? (pkg.gross_weight || pkg.net_weight || 0) : 0;
+    const numBoxes = Math.ceil(weights.length / boxCapacity);
+    if (numBoxes === 0) return '';
+    const avgWeight = (weights.reduce((s, w) => s + w, 0) + pkgWeight * numBoxes) / numBoxes;
+    return (avgWeight >= 10000 && avgWeight <= 20000) ? '大件' : '小件';
+  }
+  if (isAustralia) {
+    const packagingId = document.getElementById('ship-packaging')?.value;
+    const pkg = weightProducts.find(x => x.id === packagingId);
+    const pkgWeight = pkg ? (pkg.gross_weight || pkg.net_weight || 0) : 0;
+    const boxCapacity = parseInt(document.getElementById('ship-box-capacity')?.value) || 30;
+    const numBoxes = Math.ceil(weights.length / boxCapacity);
+    const totalWeight = weights.reduce((s, w) => s + w, 0) + pkgWeight * numBoxes;
+    return (totalWeight >= 22000 && totalWeight <= 50000) ? '大件' : '小件';
+  }
+  return '';
+}
+
 function updateChannelOptions() {
   const country = document.getElementById('ship-country').value.trim();
   const channelSel = document.getElementById('ship-channel');
-  const currentChannel = channelSel.value;
-  const channels = shippingTemplates.filter(t => {
+  const templates = shippingTemplates.filter(t => {
     if (!country) return false;
     const c = t.country || '';
     return c.includes(country) || country.includes(c);
   });
-  if (channels.length === 0) {
+  if (templates.length === 0) {
     channelSel.innerHTML = '<option value="">无可用渠道</option>';
-  } else {
-    // 每个模板独立一行，显示"渠道名（规格类型）"，避免同名渠道分不清
-    channelSel.innerHTML = channels.map(t => {
-      const label = (t.spec_type && t.spec_type !== '') ? `${t.channel}（${t.spec_type}）` : t.channel;
-      return `<option value="${t.id}">${esc(label)}</option>`;
-    }).join('');
-    if (currentChannel && channels.find(t => t.id === currentChannel)) {
-      channelSel.value = currentChannel;
-    }
+    return;
+  }
+  const detectedSpec = autoDetectSpecType(country);
+  const filtered = detectedSpec
+    ? templates.filter(t => t.spec_type === detectedSpec || !t.spec_type || t.spec_type === '')
+    : templates;
+  channelSel.innerHTML = filtered.map(t => {
+    const label = (t.spec_type && t.spec_type !== '') ? `${t.channel}（${t.spec_type}）` : t.channel;
+    return `<option value="${t.id}">${esc(label)}</option>`;
+  }).join('');
+  if (filtered.length === 1) {
+    channelSel.value = filtered[0].id;
+  } else if (detectedSpec) {
+    const exact = filtered.find(t => t.spec_type === detectedSpec);
+    if (exact) channelSel.value = exact.id;
   }
 }
 
