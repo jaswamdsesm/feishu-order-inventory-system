@@ -381,7 +381,7 @@ async function init() {
       hideLoading();
       applyRole();
       switchPage('dashboard');
-      Promise.all([loadProfiles(), loadProducts(), loadOrders()]).then(() => refreshCurrentPage());
+      loadProfiles();  // 后台加载，不阻塞渲染
       return;
     }
 
@@ -2481,6 +2481,7 @@ function isEuropeanCountry(name) {
 }
 
 function isCountryAllowed(name) {
+  if (name.includes('澳大利亚') || name.includes('澳洲')) return true; // 澳大利亚无条件放行
   if (!isEuropeanCountry(name)) return true;  // 非欧洲，不限
   return EU_WHITELIST.some(w => name.includes(w));
 }
@@ -3117,8 +3118,8 @@ async function autoCalcShipping() {
 
   // 第四步：自动判断规格类型（大件/小件）
   let targetSpec = '';
-  const isEurope = isEuropeanCountry(country);
   const isAustralia = country.includes('澳大利亚') || country.includes('澳洲');
+  const isEurope = !isAustralia && isEuropeanCountry(country);
   if (isEurope) {
     // 欧洲：每箱重量 10-20KG → 大件（按平均每箱判断）
     const avgBoxWeight = boxWeights.reduce((s, w) => s + w, 0) / boxWeights.length;
