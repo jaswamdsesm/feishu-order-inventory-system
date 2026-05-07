@@ -809,6 +809,8 @@ function openOrderModal(id) {
       document.getElementById('order-customer-country').value = o.country || '';
       document.getElementById('order-status').value = o.status || 'pending';
       document.getElementById('order-remark').value = o.remark || '';
+      document.getElementById('order-shipping-fee').value = o.shipping_fee || '';
+      recalcOrderTotal();
       document.getElementById('order-owner-select').value = o.owner_name || '';
       const items = allOrderItems.filter(i => i.order_id === id);
       items.forEach(i => addOrderItemRow(i));
@@ -932,7 +934,8 @@ async function saveOrder() {
       p_customer_name: name, p_customer_phone: phone, p_customer_email: email,
       p_customer_address: addr, p_status: status, p_remark: remark,
       p_owner_name: ownerName || null, p_country: country || null,
-      p_serial_no: null, p_items: items, p_feishu_user_id: feishuUid
+      p_serial_no: null, p_items: items, p_feishu_user_id: feishuUid,
+      p_shipping_fee: parseFloat(document.getElementById('order-shipping-fee')?.value) || 0
     });
     if (error) throw error;
     closeModal('modal-order');
@@ -2745,6 +2748,114 @@ function saveShippingTemplate() {
   renderShippingPage();
   showToast(id ? '已更新' : '已添加', 'success');
 }
+
+// ============ 订单自动报价 & 自动算运费 ============
+function recalcOrderTotal() {
+  let goodsTotal = 0;
+  const container = document.getElementById('order-items-container');
+  if (!container) return;
+  container.querySelectorAll('div[id^="item-row-"]').forEach(row => {
+    const idx = row.id.replace('item-row-', '');
+    const qty  = parseFloat(document.getElementById(`item-qty-${idx}`)?.value) || 0;
+    const price = parseFloat(document.getElementById(`item-price-${idx}`)?.value) || 0;
+    goodsTotal += qty * price;
+  });
+  const gEl = document.getElementById('order-goods-total');
+  if (gEl) gEl.textContent = `USD ${goodsTotal.toFixed(2)}`;
+  const sFee = parseFloat(document.getElementById('order-shipping-fee')?.value) || 0;
+  const tEl = document.getElementById('order-grand-total');
+  if (tEl) tEl.textContent = `USD ${(goodsTotal + sFee).toFixed(2)}`;
+}
+
+async function autoQuoteOrder() {
+  const container = document.getElementById('order-items-container');
+  if (!container) return;
+  const rows = container.querySelectorAll('div[id^="item-row-"]');
+  if (rows.length === 0) { showToast('请先添加产品', 'warning'); return; }
+  let filled = 0;
+  for (const row of rows) {
+    const idx = row.id.replace('item-row-', '');
+    const pid = document.getElementById(`item-product-${idx}`)?.value;
+    if (!pid) continue;
+    const product = allProducts.find(p => p.id === pid);
+    if (!product) continue;
+    // 用报价助手的逻辑查价格
+    const matches = quoteFindByNameOrCode(product.name);
+    if (!matches || matches.length === 0) continue;
+    // 如果多个匹配，优先取规格最接近的（如有）
+    let hit = matches[0];
+    if (matches.length > 1) {
+      // 尝试用产品 sku 精确匹配
+      const skuMatch = matches.find(m => m.code === product.sku);
+      if (skuMatch) hit = skuMatch;
+    }
+    const priceInput = document.getElementById(`item-price-${idx}`);
+    if (priceInput && (!priceInput.value || parseFloat(priceInput.value) === 0)) {
+      priceInput.value = hit.price;
+      filled++;
+    }
+  }
+  if (filled > 0) {
+    recalcOrderTotal();
+    showToast(`已自动填充 ${filled} 个产品单价`, 'success');
+  } else {
+    showToast('未找到匹配报价，请手动输入单价', 'warning');
+  }
+}
+
+async function autoCalcShipping() {
+  const country = document.getElementById('order-customer-country')?.value.trim();
+  if (!country) { showToast('请先填写国家', 'warning'); return; }
+  if (!shippingTemplates || shippingTemplates.length === 0) {
+    showToast('未找到运费模板，请先在运费助手配置', 'warning'); return;
+  }
+  // 模糊匹配国家
+  let tpl = shippingTemplates.find(t => t.country && t.country.includes(country));
+  if (!tpl) tpl = shippingTemplates.find(t => country.includes(t.country));
+  if (!tpl) { showToast(`未找到"${country}"的运费模板`, 'warning'); return; }
+  // 计算总重量：遍历订单项，从 weightProducts 按名称匹配重量
+  let totalWeight = 0;
+  const container = document.getElementById('order-items-container');
+  container.querySelectorAll('div[id^="item-row-"]').forEach(row => {
+    const idx = row.id.replace('item-row-', '');
+    const pid = document.getElementById(`item-product-${idx}`)?.value;
+    if (!pid) return;
+    const product = allProducts.find(p => p.id === pid);
+    if (!product) return;
+    const wp = weightProducts.find(w => w.type !== 'packaging' &&
+      (w.name === product.name || product.name.includes(w.name) || w.name.includes(product.name)));
+    if (!wp) return;
+    const qty = parseFloat(document.getElementById(`item-qty-${idx}`)?.value) || 0;
+    const w = wp.gross_weight || wp.net_weight || 0;
+    totalWeight += w * qty;
+  });
+  if (totalWeight === 0) {
+    showToast('未找到产品重量，请先在产品重量库配置', 'warning'); return;
+  }
+  // 用首重+续重计算运费
+  const firstW = tpl.first_unit_qty ?? tpl.first_weight ?? 500;
+  const addW  = tpl.add_unit_qty ?? tpl.add_weight ?? 500;
+  const firstP = tpl.first_price ?? 0;
+  const addP  = tpl.add_price ?? 0;
+  let freight = 0;
+  if (totalWeight <= firstW) {
+    freight = firstP;
+  } else {
+    const extraUnits = Math.ceil((totalWeight - firstW) / addW);
+    freight = firstP + extraUnits * addP;
+  }
+  document.getElementById('order-shipping-fee').value = freight.toFixed(2);
+  recalcOrderTotal();
+  const sym = curSym(tpl.currency || 'USD');
+  showToast(`运费估算：${sym}${freight.toFixed(2)}（${tpl.country}·${tpl.channel}）`, 'success');
+}
+
+function curSym(currency) {
+  return { USD: '$', EUR: '€', AUD: 'A$', CAD: 'C$', CNY: '¥', GBP: '£' }[currency] || currency;
+}
+
+
+// ============ 订单自动报价 & 自动算运费 结束 ============
 
 function calcShipping() {
   const channelId = document.getElementById('ship-channel').value;
