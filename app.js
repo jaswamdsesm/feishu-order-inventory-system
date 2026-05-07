@@ -344,6 +344,7 @@ const FEISHU_APP_ID = 'cli_a9726837c7789cc5';
 let sb, currentUser = null, currentRole = 'employee', feishuUid = '';
 let allProducts = [], allOrders = [], allOrderItems = [], allProfiles = [];
 let allInventoryLogs = [];
+let currentProfileId = '';  // 当前用户的 profile UUID，供订单权限过滤
 let currentPage = 'dashboard', pageRefreshTimers = {}, editingOrderId = null, orderItemCounter = 0;
 let originalStock = 0;  // 编辑产品时记录原始库存，用于写变动日志
 
@@ -436,6 +437,15 @@ async function feishuLogin() {
     currentUser = data.user;
     // ALI(592631) 强制超管，其他人从数据库读取角色
     feishuUid = data.user.feishu_user_id || '';
+    // 同步获取 profile UUID，供订单权限过滤用（必须 await，否则 loadOrders 会漏掉过滤）
+    if (data.user.id) {
+      currentProfileId = data.user.id;
+    } else {
+      try {
+        const { data: pf } = await sb.from('profiles').select('id').eq('feishu_user_id', feishuUid).single();
+        if (pf) currentProfileId = pf.id;
+      } catch (e) { console.warn('获取 profile ID 失败', e); }
+    }
     if (!currentUser.name && data.user.en_name) currentUser.name = data.user.en_name;
     if (!currentUser.name && data.user.mobile) currentUser.name = data.user.mobile;
     currentRole = (feishuUid === '592631' || feishuUid === 'ALI_592631' || feishuUid === 'ou_dc1cda75f061ec9e607c2b78bd68f0f1') ? 'super_admin' : (data.user.role || 'employee');
@@ -593,7 +603,12 @@ function isPhoneHidden() { return currentRole === 'employee'; }
 async function loadProfiles() { const { data, error } = await sb.from('profiles').select('*'); if (!error) { allProfiles = data || []; populateOwnerSelects(); } }
 async function loadProducts() { const { data, error } = await sb.from('products').select('*').order('name'); if (!error) allProducts = data || []; return allProducts; }
 async function loadOrders() {
-  const { data, error } = await sb.from('orders').select('*').order('created_at', { ascending: false }).limit(100);
+  let query = sb.from('orders').select('*').order('created_at', { ascending: false }).limit(100);
+  // 员工只能看自己创建的订单
+  if (currentRole === 'employee' && currentProfileId) {
+    query = query.eq('creator_id', currentProfileId);
+  }
+  const { data, error } = await query;
   if (!error) allOrders = data || [];
   const orderIds = allOrders.map(o => o.id);
   let items = [];
@@ -617,6 +632,7 @@ async function loadDashboardData() {
   document.getElementById('dash-today-orders').textContent = todayOrders.length;
   const thisMonth = new Date().toISOString().slice(0, 7);
   let monthSales = 0;
+  // 只统计自己可见的订单（allOrders 已被 loadOrders 按权限过滤）
   allOrders.filter(o => (o.created_at || '').startsWith(thisMonth)).forEach(o => {
     allOrderItems.filter(i => i.order_id === o.id).forEach(i => { monthSales += (i.unit_price || 0) * i.quantity; });
   });
@@ -2772,32 +2788,39 @@ async function autoQuoteOrder() {
   if (!container) return;
   const rows = container.querySelectorAll('div[id^="item-row-"]');
   if (rows.length === 0) { showToast('请先添加产品', 'warning'); return; }
-  let filled = 0;
+  let filled = 0, skipped = 0;
   for (const row of rows) {
     const idx = row.id.replace('item-row-', '');
     const pid = document.getElementById(`item-product-${idx}`)?.value;
     if (!pid) continue;
     const product = allProducts.find(p => p.id === pid);
     if (!product) continue;
-    // 用报价助手的逻辑查价格
-    const matches = quoteFindByNameOrCode(product.name);
-    if (!matches || matches.length === 0) continue;
-    // 如果多个匹配，优先取规格最接近的（如有）
+    // 用报价助手的逻辑查价格，同时尝试用 short_name/sku 匹配
+    let matches = quoteFindByNameOrCode(product.name);
+    if ((!matches || matches.length === 0) && product.short_name) {
+      matches = quoteFindByNameOrCode(product.short_name);
+    }
+    if ((!matches || matches.length === 0) && product.sku) {
+      matches = quoteFindByNameOrCode(product.sku);
+    }
+    if (!matches || matches.length === 0) { skipped++; continue; }
+    // 如果多个匹配，优先取 sku 精确匹配
     let hit = matches[0];
-    if (matches.length > 1) {
-      // 尝试用产品 sku 精确匹配
+    if (matches.length > 1 && product.sku) {
       const skuMatch = matches.find(m => m.code === product.sku);
       if (skuMatch) hit = skuMatch;
     }
     const priceInput = document.getElementById(`item-price-${idx}`);
-    if (priceInput && (!priceInput.value || parseFloat(priceInput.value) === 0)) {
+    if (priceInput) {
       priceInput.value = hit.price;
       filled++;
     }
   }
+  recalcOrderTotal();
   if (filled > 0) {
-    recalcOrderTotal();
-    showToast(`已自动填充 ${filled} 个产品单价`, 'success');
+    let msg = `已自动填充 ${filled} 个产品单价`;
+    if (skipped > 0) msg += `，${skipped} 个未匹配`;
+    showToast(msg, 'success');
   } else {
     showToast('未找到匹配报价，请手动输入单价', 'warning');
   }
