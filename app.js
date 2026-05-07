@@ -2672,6 +2672,16 @@ function loadShippingTemplates() {
   try {
     const raw = localStorage.getItem(SHIP_TPL_KEY);
     shippingTemplates = raw ? JSON.parse(raw) : [];
+    // 迁移：修复 delivey_time 拼写错误 → delivery_time
+    let migrated = false;
+    shippingTemplates.forEach(t => {
+      if (t.delivey_time !== undefined && t.delivery_time === undefined) {
+        t.delivery_time = t.delivey_time;
+        delete t.delivey_time;
+        migrated = true;
+      }
+    });
+    if (migrated) saveShippingTemplatesToStorage();
   } catch (e) { shippingTemplates = []; }
   return Promise.resolve();
 }
@@ -2744,7 +2754,7 @@ function renderShippingTemplates() {
     <td class="px-3 py-2.5 font-medium">${esc(t.country)}</td>
     <td class="px-3 py-2.5">${esc(t.channel)}</td>
     <td class="px-3 py-2.5">${specLabel}</td>
-    <td class="px-3 py-2.5 text-sm text-gray-600">${esc(t.delivery_time || '-')}</td>
+    <td class="px-3 py-2.5 text-sm text-gray-600">${esc(t.delivery_time || t.delivey_time || '-')}</td>
     <td class="px-3 py-2.5"><span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">${t.currency || 'USD'}</span></td>
     <td class="px-3 py-2.5 text-right">${t.first_weight || t.first_unit_qty || 0}g</td>
     <td class="px-3 py-2.5 text-right">${sym}${t.first_price.toFixed(2)}</td>
@@ -2769,7 +2779,7 @@ function openShippingTemplateModal(id) {
     document.getElementById('stpl-channel').value = t.channel;
     document.getElementById('stpl-currency').value = t.currency || 'USD';
     document.getElementById('stpl-spec-type').value = t.spec_type || '';
-    document.getElementById('stpl-delivery-time').value = t.delivery_time || '';
+    document.getElementById('stpl-delivery-time').value = t.delivery_time || t.delivey_time || '';
     document.getElementById('stpl-first-w').value = t.first_weight || t.first_unit_qty || '';
     document.getElementById('stpl-first-p').value = t.first_price;
     document.getElementById('stpl-add-w').value = t.add_weight || t.add_unit_qty || '';
@@ -2814,7 +2824,7 @@ function saveShippingTemplate() {
   const channel = document.getElementById('stpl-channel').value.trim();
   const currency = document.getElementById('stpl-currency').value;
   const specType = document.getElementById('stpl-spec-type').value;
-  const deliveyTime = document.getElementById('stpl-delivery-time').value.trim();
+  const deliveryTime = document.getElementById('stpl-delivery-time').value.trim();
   const firstWeight = parseInt(document.getElementById('stpl-first-w').value);
   const firstPrice = parseFloat(document.getElementById('stpl-first-p').value);
   const addWeight = parseInt(document.getElementById('stpl-add-w').value);
@@ -2830,12 +2840,12 @@ function saveShippingTemplate() {
   if (id) {
     const idx = shippingTemplates.findIndex(t => t.id === id);
     if (idx >= 0) {
-      shippingTemplates[idx] = { ...shippingTemplates[idx], country, channel, currency, spec_type: specType, delivey_time: deliveyTime, first_weight: firstWeight, first_price: firstPrice, add_weight: addWeight, add_price: addPrice };
+      shippingTemplates[idx] = { ...shippingTemplates[idx], country, channel, currency, spec_type: specType, delivery_time: deliveryTime, first_weight: firstWeight, first_price: firstPrice, add_weight: addWeight, add_price: addPrice };
     }
   } else {
     shippingTemplates.push({
       id: 'tpl_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-      country, channel, currency, spec_type: specType, delivey_time: deliveyTime, first_weight: firstWeight, first_price: firstPrice, add_weight: addWeight, add_price: addPrice
+      country, channel, currency, spec_type: specType, delivery_time: deliveryTime, first_weight: firstWeight, first_price: firstPrice, add_weight: addWeight, add_price: addPrice
     });
   }
 
