@@ -2801,7 +2801,6 @@ function updateChannelOptions() {
   const country = document.getElementById('ship-country').value.trim();
   const channelSel = document.getElementById('ship-channel');
   const currentChannel = channelSel.value;
-  // 模糊匹配：国家名包含关键词即可
   const channels = shippingTemplates.filter(t => {
     if (!country) return false;
     const c = t.country || '';
@@ -2810,7 +2809,11 @@ function updateChannelOptions() {
   if (channels.length === 0) {
     channelSel.innerHTML = '<option value="">无可用渠道</option>';
   } else {
-    channelSel.innerHTML = channels.map(t => `<option value="${t.id}">${esc(t.channel)}</option>`).join('');
+    // 每个模板独立一行，显示"渠道名（规格类型）"，避免同名渠道分不清
+    channelSel.innerHTML = channels.map(t => {
+      const label = (t.spec_type && t.spec_type !== '') ? `${t.channel}（${t.spec_type}）` : t.channel;
+      return `<option value="${t.id}">${esc(label)}</option>`;
+    }).join('');
     if (currentChannel && channels.find(t => t.id === currentChannel)) {
       channelSel.value = currentChannel;
     }
