@@ -348,7 +348,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
           <div class="overflow-x-auto">
             <table class="w-full text-sm min-w-[600px]">
               <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
-                <tr><th class="px-3 py-2 text-left">目的国家/地区</th><th class="px-3 py-2 text-left">渠道名称</th><th class="px-3 py-2 text-left">货币</th><th class="px-3 py-2 text-right">首重(g)</th><th class="px-3 py-2 text-right">首重价格</th><th class="px-3 py-2 text-right">续重单位(g)</th><th class="px-3 py-2 text-right">续重价格</th><th class="px-3 py-2 text-center">操作</th></tr>
+                <tr><th class="px-3 py-2 text-left">目的国家/地区</th><th class="px-3 py-2 text-left">渠道名称</th><th class="px-3 py-2 text-left">规格类型</th><th class="px-3 py-2 text-left">时效性</th><th class="px-3 py-2 text-left">货币</th><th class="px-3 py-2 text-right">首重(g)</th><th class="px-3 py-2 text-right">首重价格</th><th class="px-3 py-2 text-right">续重单位(g)</th><th class="px-3 py-2 text-right">续重价格</th><th class="px-3 py-2 text-center">操作</th></tr>
               </thead>
               <tbody id="shipping-tpl-body"></tbody>
             </table>
@@ -409,6 +409,12 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
       </select></div>
     </div>
     <div class="grid grid-cols-2 gap-3">
+      <div><label class="block text-xs text-gray-500 mb-1">规格类型</label><select id="stpl-spec-type" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm">
+        <option value="">不限</option><option value="小件">小件</option><option value="大件">大件</option>
+      </select></div>
+      <div><label class="block text-xs text-gray-500 mb-1">时效性</label><input id="stpl-delivery-time" type="text" placeholder="如 3-5天、7-10天" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
       <div><label class="block text-xs text-gray-500 mb-1">首重 (g) *</label><input id="stpl-first-w" type="number" min="1" placeholder="500" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
       <div><label class="block text-xs text-gray-500 mb-1" id="lbl-first-p">首重价格 ($) *</label><input id="stpl-first-p" type="number" min="0" step="0.01" placeholder="25.00" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
     </div>
@@ -443,7 +449,14 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
       <input id="order-customer-name" type="text" placeholder="客户姓名 *" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
       <div class="grid grid-cols-2 gap-2">
         <input id="order-customer-phone" type="tel" placeholder="联系电话" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
-        <input id="order-customer-country" type="text" placeholder="国家（选填）" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
+        <!-- 国家搜索下拉 -->
+        <div class="relative">
+          <input id="order-customer-country-input" type="text" placeholder="国家 *" autocomplete="off"
+            class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
+            onfocus="showCountryDropdown()" oninput="filterCountryDropdown()" onblur="hideCountryDropdownDelay()"/>
+          <input type="hidden" id="order-customer-country"/>
+          <div id="country-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto z-50 text-sm"></div>
+        </div>
       </div>
       <input id="order-customer-email" type="email" placeholder="电子邮箱（选填）" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
       <textarea id="order-customer-addr" rows="2" placeholder="收货地址 *" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm resize-none"></textarea>

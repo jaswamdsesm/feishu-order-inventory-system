@@ -823,6 +823,7 @@ function openOrderModal(id) {
       document.getElementById('order-customer-email').value = o.customer_email || '';
       document.getElementById('order-customer-addr').value = o.customer_address || '';
       document.getElementById('order-customer-country').value = o.country || '';
+      document.getElementById('order-customer-country-input').value = o.country || '';
       document.getElementById('order-status').value = o.status || 'pending';
       document.getElementById('order-remark').value = o.remark || '';
       document.getElementById('order-shipping-fee').value = o.shipping_fee || '';
@@ -922,7 +923,7 @@ async function saveOrder() {
   const phone = document.getElementById('order-customer-phone').value.trim();
   const email = document.getElementById('order-customer-email').value.trim();
   const addr = document.getElementById('order-customer-addr').value.trim();
-  const country = document.getElementById('order-customer-country').value.trim();
+  const country = (document.getElementById('order-customer-country-input')?.value || document.getElementById('order-customer-country')?.value || '').trim();
   const ownerName = document.getElementById('order-owner-select')?.value || '';
   const remark = document.getElementById('order-remark').value.trim();
   if (!name || !addr) { showToast('请填写客户姓名和收货地址', 'warning'); return; }
@@ -2375,7 +2376,77 @@ const SHIP_TPL_KEY = 'oi_shipping_templates';
 const CURRENCY_SYMBOLS = { USD: '$', AUD: 'A$', CNY: '¥', EUR: '€', GBP: '£' };
 function curSym(c) { return CURRENCY_SYMBOLS[c] || c + ' '; }
 
-// 产品重量库
+// ============ 欧洲可邮寄国家白名单 ============
+const EU_WHITELIST = [
+  '丹麦','瑞典','芬兰','德国','奥地利','比利时','荷兰','波兰','西班牙',
+  '捷克','法国','卢森堡','匈牙利','意大利','斯洛文尼亚','斯洛伐克',
+  '保加利亚','爱沙尼亚','希腊','克罗地亚','爱尔兰','立陶宛','拉脱维亚','葡萄牙','罗马尼亚'
+];
+const ALL_COUNTRIES = [
+  '澳大利亚','新西兰','美国','加拿大','英国','爱尔兰',
+  '德国','法国','荷兰','比利时','卢森堡','意大利','西班牙','葡萄牙',
+  '奥地利','瑞士','瑞典','丹麦','芬兰','挪威','波兰','捷克',
+  '匈牙利','希腊','斯洛文尼亚','斯洛伐克','保加利亚','爱沙尼亚',
+  '克罗地亚','立陶宛','拉脱维亚','罗马尼亚',
+  '中国','日本','韩国','新加坡','马来西亚','泰国','越南','菲律宾',
+  '印度尼西亚','印度','阿联酋','沙特阿拉伯','卡塔尔','以色列',
+  '南非','巴西','墨西哥','阿根廷','智利','哥伦比亚'
+];
+
+function isEuropeanCountry(name) {
+  const europeKeywords = ['丹麦','瑞典','挪威','芬兰','德国','法国','荷兰','比利时','卢森堡',
+    '意大利','西班牙','葡萄牙','奥地利','瑞士','波兰','捷克','匈牙利',
+    '希腊','斯洛文尼亚','斯洛伐克','保加利亚','爱沙尼亚','克罗地亚',
+    '立陶宛','拉脱维亚','罗马尼亚','爱尔兰','英国'];
+  return europeKeywords.some(k => name.includes(k));
+}
+
+function isCountryAllowed(name) {
+  if (!isEuropeanCountry(name)) return true;  // 非欧洲，不限
+  return EU_WHITELIST.some(w => name.includes(w));
+}
+
+function showCountryDropdown() {
+  const panel = document.getElementById('country-dropdown');
+  filterCountryDropdown();
+  panel.classList.remove('hidden');
+}
+
+function filterCountryDropdown() {
+  const input = document.getElementById('order-customer-country-input');
+  const panel = document.getElementById('country-dropdown');
+  const keyword = (input.value || '').trim().toLowerCase();
+  let list = ALL_COUNTRIES.filter(c => isCountryAllowed(c));
+  if (keyword) list = list.filter(c => c.toLowerCase().includes(keyword));
+  if (list.length === 0) {
+    panel.innerHTML = '<div class="px-3 py-2 text-xs text-gray-400">无匹配国家</div>';
+  } else {
+    panel.innerHTML = list.map(c =>
+      `<div class="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm" data-country="${esc(c)}">${esc(c)}</div>`
+    ).join('');
+    panel.querySelectorAll('[data-country]').forEach(el => {
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        selectCountry(el.dataset.country);
+      });
+    });
+  }
+  panel.classList.remove('hidden');
+}
+
+function selectCountry(name) {
+  document.getElementById('order-customer-country-input').value = name;
+  document.getElementById('order-customer-country').value = name;
+  document.getElementById('country-dropdown').classList.add('hidden');
+}
+
+function hideCountryDropdownDelay() {
+  setTimeout(() => {
+    document.getElementById('country-dropdown')?.classList.add('hidden');
+  }, 200);
+}
+
+// ============ 产品重量库
 let weightProducts = [];
 const WEIGHT_PRODUCT_KEY = 'oi_weight_products';
 
@@ -2668,9 +2739,12 @@ function renderShippingTemplates() {
   empty.classList.add('hidden');
   tbody.innerHTML = shippingTemplates.map(t => {
     const sym = curSym(t.currency || 'USD');
+    const specLabel = !t.spec_type ? '不限' : t.spec_type === '小件' ? '<span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">小件</span>' : '<span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-700">大件</span>';
     return `<tr class="border-b border-gray-50 hover:bg-gray-50 transition-colors">
     <td class="px-3 py-2.5 font-medium">${esc(t.country)}</td>
     <td class="px-3 py-2.5">${esc(t.channel)}</td>
+    <td class="px-3 py-2.5">${specLabel}</td>
+    <td class="px-3 py-2.5 text-sm text-gray-600">${esc(t.delivery_time || '-')}</td>
     <td class="px-3 py-2.5"><span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">${t.currency || 'USD'}</span></td>
     <td class="px-3 py-2.5 text-right">${t.first_weight || t.first_unit_qty || 0}g</td>
     <td class="px-3 py-2.5 text-right">${sym}${t.first_price.toFixed(2)}</td>
@@ -2694,6 +2768,8 @@ function openShippingTemplateModal(id) {
     document.getElementById('stpl-country').value = t.country;
     document.getElementById('stpl-channel').value = t.channel;
     document.getElementById('stpl-currency').value = t.currency || 'USD';
+    document.getElementById('stpl-spec-type').value = t.spec_type || '';
+    document.getElementById('stpl-delivery-time').value = t.delivery_time || '';
     document.getElementById('stpl-first-w').value = t.first_weight || t.first_unit_qty || '';
     document.getElementById('stpl-first-p').value = t.first_price;
     document.getElementById('stpl-add-w').value = t.add_weight || t.add_unit_qty || '';
@@ -2704,6 +2780,8 @@ function openShippingTemplateModal(id) {
     document.getElementById('stpl-country').value = '';
     document.getElementById('stpl-channel').value = '';
     document.getElementById('stpl-currency').value = 'USD';
+    document.getElementById('stpl-spec-type').value = '';
+    document.getElementById('stpl-delivery-time').value = '';
     document.getElementById('stpl-first-w').value = '';
     document.getElementById('stpl-first-p').value = '';
     document.getElementById('stpl-add-w').value = '';
@@ -2735,6 +2813,8 @@ function saveShippingTemplate() {
   const country = document.getElementById('stpl-country').value.trim();
   const channel = document.getElementById('stpl-channel').value.trim();
   const currency = document.getElementById('stpl-currency').value;
+  const specType = document.getElementById('stpl-spec-type').value;
+  const deliveyTime = document.getElementById('stpl-delivery-time').value.trim();
   const firstWeight = parseInt(document.getElementById('stpl-first-w').value);
   const firstPrice = parseFloat(document.getElementById('stpl-first-p').value);
   const addWeight = parseInt(document.getElementById('stpl-add-w').value);
@@ -2750,12 +2830,12 @@ function saveShippingTemplate() {
   if (id) {
     const idx = shippingTemplates.findIndex(t => t.id === id);
     if (idx >= 0) {
-      shippingTemplates[idx] = { ...shippingTemplates[idx], country, channel, currency, first_weight: firstWeight, first_price: firstPrice, add_weight: addWeight, add_price: addPrice };
+      shippingTemplates[idx] = { ...shippingTemplates[idx], country, channel, currency, spec_type: specType, delivey_time: deliveyTime, first_weight: firstWeight, first_price: firstPrice, add_weight: addWeight, add_price: addPrice };
     }
   } else {
     shippingTemplates.push({
       id: 'tpl_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-      country, channel, currency, first_weight: firstWeight, first_price: firstPrice, add_weight: addWeight, add_price: addPrice
+      country, channel, currency, spec_type: specType, delivey_time: deliveyTime, first_weight: firstWeight, first_price: firstPrice, add_weight: addWeight, add_price: addPrice
     });
   }
 
@@ -2828,36 +2908,30 @@ async function autoQuoteOrder() {
 
 async function autoCalcShipping() {
   const country = document.getElementById('order-customer-country')?.value.trim();
-  if (!country) { showToast('请先填写国家', 'warning'); return; }
+  if (!country) { showToast('请先选择国家', 'warning'); return; }
+  // 欧洲白名单校验
+  if (!isCountryAllowed(country)) {
+    showToast(`"${country}"暂不支持邮寄，请更换国家`, 'warning'); return;
+  }
   if (!shippingTemplates || shippingTemplates.length === 0) {
     showToast('未找到运费模板，请先在运费助手配置', 'warning'); return;
   }
-  // 国家匹配：优先精确匹配，再前缀匹配，最后模糊包含
-  let tpl = shippingTemplates.find(t => t.country === country);
-  if (!tpl) tpl = shippingTemplates.find(t => t.country && t.country.startsWith(country));
-  if (!tpl) tpl = shippingTemplates.find(t => country && country.startsWith(t.country));
-  if (!tpl) tpl = shippingTemplates.find(t => t.country && t.country.includes(country));
-  if (!tpl) tpl = shippingTemplates.find(t => country.includes(t.country));
-  if (!tpl) { showToast(`未找到"${country}"的运费模板`, 'warning'); return; }
 
   // 产品名称 → 重量库类别 映射规则
   function getWeightCategory(productName) {
     const n = (productName || '').toLowerCase();
-    // 3ML水：Acetic Acid / AA / 3ml×10vials，BAC Water WA3/BA3 3ml
     if (n.includes('acetic') || (n.includes('aa') && n.includes('3ml'))) return '3ML水';
     if (n.includes('bac') && (n.includes('wa3') || n.includes('ba3') || n.includes('3ml'))) return '3ML水';
-    // 10ML水：BAC Water WA10/BA10 10ml×10vials
     if (n.includes('bac') && (n.includes('wa10') || n.includes('ba10') || n.includes('10ml'))) return '10ML水';
-    // 大冻干粉（NAD、HCG）10ML瓶：NAD+ NJ500/NJ1000，Glutathione GTT1500
     if (n.includes('nad') || n.includes('nj500') || n.includes('nj1000')) return '大冻干粉（NAD、HCG）10ML瓶';
     if (n.includes('glutathione') || n.includes('gtt1500')) return '大冻干粉（NAD、HCG）10ML瓶';
-    // 默认：冻干粉
     return '冻干粉';
   }
 
-  // 计算总重量：遍历订单项，按映射规则从 weightProducts 取重量
-  let totalWeight = 0;
+  // 第一步：遍历订单项，计算总盒数 & 每盒重量列表
+  let totalVials = 0;
   let unmatchedProducts = [];
+  const vialWeightList = []; // 每盒的重量，用于后续分箱
   const container = document.getElementById('order-items-container');
   container.querySelectorAll('div[id^="item-row-"]').forEach(row => {
     const idx = row.id.replace('item-row-', '');
@@ -2871,34 +2945,87 @@ async function autoCalcShipping() {
       unmatchedProducts.push(product.name + `（需重量库有"${category}"）`);
       return;
     }
-    const qty = parseFloat(document.getElementById(`item-qty-${idx}`)?.value) || 0;
+    const qty = parseInt(document.getElementById(`item-qty-${idx}`)?.value) || 0;
     const w = wp.gross_weight || wp.net_weight || 0;
-    totalWeight += w * qty;
+    totalVials += qty;
+    for (let i = 0; i < qty; i++) vialWeightList.push(w);
   });
-  if (totalWeight === 0) {
+  if (totalVials === 0) {
     const tip = unmatchedProducts.length > 0
       ? `请在产品重量库中添加以下类别：${unmatchedProducts.join('、')}`
-      : '请在产品重量库中添加"冻干粉 / 3ML水 / 10ML水 / 大冻干粉（NAD、HCG）10ML瓶"中的对应类别';
+      : '请在产品重量库中添加"冻干粉/3ML水/10ML水/大冻干粉"中的对应类别';
     showToast(tip, 'warning'); return;
   }
-  // 用首重+续重计算运费
-  const firstW = tpl.first_unit_qty ?? tpl.first_weight ?? 500;
-  const addW  = tpl.add_unit_qty ?? tpl.add_weight ?? 500;
+
+  // 第二步：自动选择外包装（找能装下的最小箱子，允许偏差3盒）
+  const packagingList = weightProducts.filter(w => w.type === 'packaging' && (w.capacity || 0) > 0);
+  if (packagingList.length === 0) {
+    showToast('请先在产品重量库中添加外包装（需设置容量）', 'warning'); return;
+  }
+  packagingList.sort((a, b) => (a.capacity || 0) - (b.capacity || 0));
+  let selectedPkg = packagingList.find(p => totalVials <= (p.capacity || 0) + 3);
+  if (!selectedPkg) selectedPkg = packagingList[packagingList.length - 1];
+  const boxCapacity = selectedPkg.capacity || 30;
+  const pkgWeight = selectedPkg.gross_weight || selectedPkg.net_weight || 0;
+
+  // 第三步：自动判断规格类型（大件/小件）
+  let targetSpec = '';
+  const isEurope = isEuropeanCountry(country);
+  const isAustralia = country.includes('澳大利亚') || country.includes('澳洲');
+  if (isEurope) {
+    const perBoxWeight = (vialWeightList.reduce((s, w) => s + w, 0) / Math.ceil(totalVials / boxCapacity)) + pkgWeight;
+    targetSpec = (perBoxWeight >= 10000 && perBoxWeight <= 20000) ? '大件' : '小件';
+  } else if (isAustralia) {
+    const totalWeight = vialWeightList.reduce((s, w) => s + w, 0);
+    targetSpec = (totalWeight >= 22000 && totalWeight <= 50000) ? '大件' : '小件';
+  }
+
+  // 第四步：匹配运费模板（国家匹配 + 规格类型优先）
+  let candidates = shippingTemplates.filter(t => {
+    if (!t.country) return false;
+    return t.country === country || t.country.startsWith(country) || country.startsWith(t.country) || t.country.includes(country) || country.includes(t.country);
+  });
+  let tpl = null;
+  if (targetSpec) {
+    tpl = candidates.find(t => t.spec_type === targetSpec);
+    if (!tpl) tpl = candidates.find(t => !t.spec_type || t.spec_type === '');
+  }
+  if (!tpl && candidates.length > 0) tpl = candidates[0];
+  if (!tpl) { showToast(`未找到"${country}"的运费模板`, 'warning'); return; }
+
+  // 第五步：分箱计费
+  const boxes = [];
+  let idx = 0;
+  while (idx < vialWeightList.length) {
+    const chunk = vialWeightList.slice(idx, idx + boxCapacity);
+    const boxWeight = chunk.reduce((s, w) => s + w, 0) + pkgWeight;
+    boxes.push(boxWeight);
+    idx += boxCapacity;
+  }
+  const firstW = tpl.first_unit_qty ?? tpl.first_weight ?? 0;
+  const addW  = tpl.add_unit_qty ?? tpl.add_weight ?? 0;
   const firstP = tpl.first_price ?? 0;
   const addP  = tpl.add_price ?? 0;
-  let freight = 0;
-  if (totalWeight <= firstW) {
-    freight = firstP;
-  } else {
-    const extraUnits = Math.ceil((totalWeight - firstW) / addW);
-    freight = firstP + extraUnits * addP;
-  }
-  document.getElementById('order-shipping-fee').value = freight.toFixed(2);
+  let totalFreight = 0;
+  boxes.forEach(bw => {
+    if (bw <= firstW) {
+      totalFreight += firstP;
+    } else {
+      const extraUnits = Math.ceil((bw - firstW) / addW);
+      totalFreight += firstP + extraUnits * addP;
+    }
+  });
+
+  document.getElementById('order-shipping-fee').value = totalFreight.toFixed(2);
   recalcOrderTotal();
   const sym = curSym(tpl.currency || 'USD');
-  let msg = `运费估算：${sym}${freight.toFixed(2)}（${tpl.country}·${tpl.channel}）`;
+  let msg = `运费估算：${sym}${totalFreight.toFixed(2)}（${tpl.country}·${tpl.channel}`;
+  if (tpl.spec_type) msg += `·${tpl.spec_type}`;
+  if (tpl.delivey_time) msg += `·${tpl.delivey_time}`;
+  msg += `）`;
+  msg += `；分${boxes.length}箱，用"${selectedPkg.name}"`;
   if (unmatchedProducts.length > 0) {
-    msg += `；以下产品未匹配类别：${unmatchedProducts.join('、')}`;
+    msg += `；以下产品未匹配：${unmatchedProducts.join('、')}`;
     showToast(msg, 'warning');
   } else {
     showToast(msg, 'success');
