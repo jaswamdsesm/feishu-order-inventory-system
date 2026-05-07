@@ -1112,7 +1112,7 @@ async function batchImportOrders(results) {
       const { data, error } = await sb.rpc('upsert_order', {
         p_order_id: null, p_order_no: orderNo,
         p_customer_name: r.customer_name, p_customer_phone: r.customer_phone || '', p_customer_email: '',
-        p_customer_address: r.customer_address, p_status: 'pending', p_remark: r.remark || '', p_serial_no: null,
+        p_customer_address: r.customer_address, p_status: 'pending', p_remark: r.remark || '',
         p_items: items, p_feishu_user_id: feishuUid
       });
       if (error) throw error;
