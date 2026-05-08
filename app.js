@@ -2861,7 +2861,7 @@ function loadWeightProducts() {
       }));
       localStorage.setItem(WEIGHT_PRODUCT_KEY, JSON.stringify(weightProducts));
     } else {
-      // 回退到 localStorage
+      // 回退到 localStorage，如果有数据则自动同步到云端
       try {
         const raw = localStorage.getItem(WEIGHT_PRODUCT_KEY);
         weightProducts = raw ? JSON.parse(raw) : [];
@@ -2873,6 +2873,11 @@ function loadWeightProducts() {
           }
         });
         if (changed) saveWeightProductsToStorage();
+        // 云端为空但本地有数据，自动上传
+        if (weightProducts.length > 0) {
+          console.log('产品重量库云端为空，从本地同步上传');
+          sb.rpc('sync_weight_products', { p_data: JSON.stringify(weightProducts) }).catch(e => console.warn('产品重量库自动上传失败:', e));
+        }
       } catch (e) { weightProducts = []; }
     }
   }).catch(() => {
@@ -3125,7 +3130,7 @@ function loadShippingTemplates() {
       }));
       localStorage.setItem(SHIP_TPL_KEY, JSON.stringify(shippingTemplates));
     } else {
-      // 回退到 localStorage
+      // 回退到 localStorage，如果有数据则自动同步到云端
       try {
         const raw = localStorage.getItem(SHIP_TPL_KEY);
         shippingTemplates = raw ? JSON.parse(raw) : [];
@@ -3138,6 +3143,11 @@ function loadShippingTemplates() {
           }
         });
         if (migrated) saveShippingTemplatesToStorage();
+        // 云端为空但本地有数据，自动上传
+        if (shippingTemplates.length > 0) {
+          console.log('运费模板云端为空，从本地同步上传');
+          sb.rpc('sync_shipping_templates', { p_data: JSON.stringify(shippingTemplates) }).catch(e => console.warn('运费模板自动上传失败:', e));
+        }
       } catch (e) { shippingTemplates = []; }
     }
   }).catch(() => {
