@@ -992,7 +992,7 @@ function renderOrders() {
         <div class="flex flex-wrap items-center gap-2">
           <span class="font-bold text-sm text-green-700">${sym}${totalCur.toFixed(2)}</span>
           ${o.shipping_fee > 0 ? '<span class="text-xs text-orange-500">运费' + sym + parseFloat(o.shipping_fee).toFixed(2) + '</span>' : ''}
-          ${o.handling_fee > 0 ? '<span class="text-xs text-red-500">手续费' + sym + parseFloat(o.handling_fee).toFixed(2) + '</span>' : ''}
+          ${o.handling_fee > 0 ? '<span class="text-xs text-red-400" title="从利润扣除">手续费-' + sym + parseFloat(o.handling_fee).toFixed(2) + '</span>' : ''}
           ${cnyHtml}
         </div>
         <div class="flex items-center gap-1">${shipBtn}${deliveredBtn}${btnHtml}</div>
@@ -1238,7 +1238,8 @@ async function saveOrder() {
     const exchangeRate = _orderExchangeRate; // 1 结算货币 = ? USD
     const shippingUSD = (parseFloat(shippingFee) || 0) * exchangeRate;
     const handlingUSD = handlingFee * exchangeRate;
-    const grandTotalUSD = totalAmt + shippingUSD + handlingUSD;
+    // 总额 = 货物 + 运费，不含手续费（手续费从利润扣）
+    const grandTotalUSD = totalAmt + shippingUSD;
     const totalCNY = grandTotalUSD * _orderUsdToCny;
     // 新增订单时生成 UUID
     const newOrderId = editingOrderId || crypto.randomUUID();
@@ -3323,16 +3324,17 @@ function recalcOrderTotal() {
   const hEl = document.getElementById('order-handling-fee');
   if (hEl) {
     if (feeConfig) {
-      hEl.textContent = `${sym}${handlingFeeCur.toFixed(2)}${feeConfig.fixed > 0 ? ` (含$${feeConfig.fixed}固定费)` : ''}`;
+      hEl.textContent = `-${sym}${handlingFeeCur.toFixed(2)}${feeConfig.fixed > 0 ? ` (含$${feeConfig.fixed}固定费)` : ''}（利润扣除）`;
       hEl.classList.remove('text-gray-400');
-      hEl.classList.add('text-red-600');
+      hEl.classList.add('text-red-500');
     } else {
-      hEl.textContent = method ? `${sym}0.00` : '请先选择付款方式';
-      hEl.classList.remove('text-red-600');
+      hEl.textContent = method ? `-${sym}0.00（利润扣除）` : '请先选择付款方式';
+      hEl.classList.remove('text-red-500');
       hEl.classList.add('text-gray-400');
     }
   }
-  const grandTotalUSD = subtotalUSD + handlingFeeUSD;
+  // 订单总额 = 货物 + 运费，不含手续费（手续费从利润扣）
+  const grandTotalUSD = subtotalUSD;
   const grandTotalCur = grandTotalUSD / _orderExchangeRate;
   const totalCNY = grandTotalUSD * _orderUsdToCny;
   const tEl = document.getElementById('order-grand-total');
