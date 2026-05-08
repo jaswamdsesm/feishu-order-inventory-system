@@ -841,13 +841,18 @@ function renderOrders() {
         <span>👤 ${esc(o.customer_name)}</span>
         <span>📞 ${phoneHtml || '—'}</span>
         ${o.country ? '<span>🌍 ' + esc(o.country) + '</span>' : ''}
+        ${o.payment_method ? '<span class="text-purple-500">' + PAYMENT_LABELS[o.payment_method] + '</span>' : ''}
         ${o.owner_name ? '<span class="text-blue-400">归属：' + esc(o.owner_name) + '</span>' : ''}
       </div>
       ${o.customer_address ? '<div class="text-xs text-gray-400 mb-2 truncate">📍 ' + addrHtml + '</div>' : ''}
       ${trackHtml}
-      <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 overflow-hidden">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + esc(p.sku) : ''; return `<div class="flex items-center justify-between text-xs min-w-0"><span class="truncate">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span><span class="text-gray-500 shrink-0 ml-2">${((i.unit_price || 0) * i.quantity).toFixed(2)}元</span></div>`; }).join('')}</div>
+      <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 overflow-hidden">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + esc(p.sku) : ''; return `<div class="flex items-center justify-between text-xs min-w-0"><span class="truncate">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span><span class="text-gray-500 shrink-0 ml-2">$${((i.unit_price || 0) * i.quantity).toFixed(2)}</span></div>`; }).join('')}</div>
       <div class="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
-        <span class="font-bold text-sm text-blue-600">合计：${total.toFixed(2)}元</span>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-sm text-green-700">$${total.toFixed(2)}</span>
+          ${o.shipping_fee > 0 ? '<span class="text-xs text-orange-500">运费$' + parseFloat(o.shipping_fee).toFixed(2) + '</span>' : ''}
+          ${o.handling_fee > 0 ? '<span class="text-xs text-red-500">手续费$' + parseFloat(o.handling_fee).toFixed(2) + '</span>' : ''}
+        </div>
         <div class="flex items-center gap-1">${shipBtn}${deliveredBtn}${btnHtml}</div>
       </div>
     </div>`;
@@ -891,6 +896,8 @@ async function confirmShip() {
       p_feishu_user_id: o.feishu_user_id || feishuUid,
       p_items: o.items || [],
       p_shipping_fee: String(o.shipping_fee || 0),
+      p_payment_method: o.payment_method || null,
+      p_handling_fee: o.handling_fee || 0,
       p_order_date: o.order_date || null,
       p_remark: o.remark || '',
       p_tracking_no: trackingNo
@@ -936,6 +943,7 @@ function openOrderModal(id) {
       document.getElementById('order-remark').value = o.remark || '';
       document.getElementById('order-shipping-fee').value = o.shipping_fee || '';
       document.getElementById('order-tracking-no').value = o.tracking_no || '';
+      document.getElementById('order-payment-method').value = o.payment_method || '';
       // 回填订单日期（取 created_at 的日期部分）
       if (o.created_at) document.getElementById('order-date').value = o.created_at.slice(0, 10);
       document.getElementById('order-tracking-row').classList.toggle('hidden', o.status !== 'shipped');
@@ -951,6 +959,8 @@ function openOrderModal(id) {
     document.getElementById('order-customer-addr').value = '';
     document.getElementById('order-status').value = 'pending';
     document.getElementById('order-remark').value = '';
+    document.getElementById('order-shipping-fee').value = '';
+    document.getElementById('order-payment-method').value = '';
     addOrderItemRow();
   }
   openModal('modal-order');
@@ -1061,6 +1071,8 @@ async function saveOrder() {
     const status = isEdit ? document.getElementById('order-status').value : 'pending';
     const trackingNo = document.getElementById('order-tracking-no')?.value.trim() || null;
     const shippingFee = String(parseFloat(document.getElementById('order-shipping-fee')?.value) || 0);
+    const paymentMethod = document.getElementById('order-payment-method')?.value || '';
+    const handlingFee = parseFloat(document.getElementById('order-handling-fee')?.textContent?.replace(/[^0-9.]/g, '')) || 0;
     const productSummary = items.map(i => {
       const p = allProducts.find(x => x.id === i.product_id);
       return (p ? p.name : '未知产品') + '×' + i.quantity;
@@ -1083,6 +1095,8 @@ async function saveOrder() {
       p_feishu_user_id: feishuUid,
       p_items: items,
       p_shipping_fee: shippingFee,
+      p_payment_method: paymentMethod || null,
+      p_handling_fee: handlingFee || 0,
       p_order_date: orderDate || null,
       p_remark: remark || '',
       p_tracking_no: trackingNo || null
@@ -1126,6 +1140,8 @@ async function markDelivered(id) {
       p_feishu_user_id: o.feishu_user_id || feishuUid,
       p_items: o.items || [],
       p_shipping_fee: String(o.shipping_fee || 0),
+      p_payment_method: o.payment_method || null,
+      p_handling_fee: o.handling_fee || 0,
       p_order_date: o.order_date || null,
       p_remark: o.remark || ''
     });
@@ -1207,6 +1223,8 @@ async function batchImportOrders(results) {
         p_feishu_user_id: feishuUid,
         p_items: items,
         p_shipping_fee: '0',
+        p_payment_method: null,
+        p_handling_fee: 0,
         p_order_date: null,
         p_remark: r.remark || '',
         p_tracking_no: null
@@ -2549,6 +2567,7 @@ function downloadBlob(blob, filename) {
 let shippingTemplates = [];
 const SHIP_TPL_KEY = 'oi_shipping_templates';
 const CURRENCY_SYMBOLS = { USD: '$', AUD: 'A$', CNY: '¥', EUR: '€', GBP: '£' };
+const PAYMENT_LABELS = { bank_transfer: '🏦 银行转账', paypal: '🅿️ PayPal', wise: '💚 Wise', crypto: '🔗 加密货币' };
 function curSym(c) { return CURRENCY_SYMBOLS[c] || c + ' '; }
 
 // ============ 欧洲可邮寄国家白名单 ============
@@ -3100,8 +3119,33 @@ function recalcOrderTotal() {
   const gEl = document.getElementById('order-goods-total');
   if (gEl) gEl.textContent = `USD ${goodsTotal.toFixed(2)}`;
   const sFee = parseFloat(document.getElementById('order-shipping-fee')?.value) || 0;
+  const subtotal = goodsTotal + sFee;
+
+  // 付款方式手续费
+  const method = document.getElementById('order-payment-method')?.value || '';
+  const FEE_RATES = {
+    bank_transfer: { rate: 0.025, fixed: 0 },
+    paypal:        { rate: 0.044, fixed: 0.30 },
+    wise:          { rate: 0.025, fixed: 0 },
+    crypto:        { rate: 0.025, fixed: 0 }
+  };
+  const feeConfig = FEE_RATES[method];
+  const handlingFee = feeConfig ? (subtotal * feeConfig.rate + feeConfig.fixed) : 0;
+  const hEl = document.getElementById('order-handling-fee');
+  if (hEl) {
+    if (feeConfig) {
+      hEl.textContent = `$${handlingFee.toFixed(2)}${feeConfig.fixed > 0 ? ` (含$${feeConfig.fixed}固定费)` : ''}`;
+      hEl.classList.remove('text-gray-400');
+      hEl.classList.add('text-red-600');
+    } else {
+      hEl.textContent = method ? '$0.00' : '请先选择付款方式';
+      hEl.classList.remove('text-red-600');
+      hEl.classList.add('text-gray-400');
+    }
+  }
+  const grandTotal = subtotal + handlingFee;
   const tEl = document.getElementById('order-grand-total');
-  if (tEl) tEl.textContent = `USD ${(goodsTotal + sFee).toFixed(2)}`;
+  if (tEl) tEl.textContent = `USD ${grandTotal.toFixed(2)}`;
 }
 
 async function autoQuoteOrder() {
