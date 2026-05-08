@@ -468,6 +468,7 @@ function feishuLogout() { location.href = location.pathname; }
 function applyRole() {
   const isAdmin = ['super_admin', 'admin'].includes(currentRole);
   const isSuper = currentRole === 'super_admin';
+  const isEmployee = currentRole === 'employee';
   const roleText = { super_admin: '超级管理员', admin: '管理员', employee: '员工' };
   document.getElementById('nav-admin-only').classList.toggle('hidden', !isSuper);
   document.getElementById('nav-logs-only').classList.toggle('hidden', !isAdmin);
