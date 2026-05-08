@@ -1079,6 +1079,8 @@ async function openOrderModal(id) {
   document.getElementById('order-id').value = id || '';
   document.getElementById('order-status-row').classList.toggle('hidden', !id);
   document.getElementById('order-items-container').innerHTML = '';
+  // 清理所有产品行的 AbortController
+  document.querySelectorAll('#order-items-container div[id^="item-row-"]').forEach(r => { if (r._ac) r._ac.abort(); });
   orderItemCounter = 0;
   // 默认填入今天日期
   const today = new Date().toISOString().slice(0, 10);
@@ -1108,7 +1110,12 @@ async function openOrderModal(id) {
       if (o.created_at) document.getElementById('order-date').value = o.created_at.slice(0, 10);
       document.getElementById('order-tracking-row').classList.toggle('hidden', o.status !== 'shipped');
       document.getElementById('order-owner-select').value = o.owner_name || '';
-      const items = allOrderItems.filter(i => i.order_id === id);
+      let items = allOrderItems.filter(i => i.order_id === id);
+      // 如果 items 为空（可能数据未加载），重新加载
+      if (items.length === 0) {
+        await loadOrders();
+        items = allOrderItems.filter(i => i.order_id === id);
+      }
       items.forEach(i => addOrderItemRow(i));
     }
   } else {
@@ -1181,9 +1188,12 @@ function addOrderItemRow(existing) {
     const list = fuzzyProductSearch(kw);
     renderDrop(list);
   });
-  document.addEventListener('click', function handler(e) {
+  // 点击外部关闭下拉（用 AbortController 便于清理）
+  const ac = new AbortController();
+  div._ac = ac;
+  document.addEventListener('click', function(e) {
     if (!div.contains(e.target)) { dropEl.classList.add('hidden'); }
-  });
+  }, { signal: ac.signal });
 
   if (existing && existing.product_id) {
     const p = allProducts.find(x => x.id === existing.product_id);
@@ -1194,7 +1204,7 @@ function addOrderItemRow(existing) {
   }
 }
 
-function removeOrderItemRow(rowId) { const e = document.getElementById(rowId); if (e) e.remove(); }
+function removeOrderItemRow(rowId) { const e = document.getElementById(rowId); if (e) { if (e._ac) e._ac.abort(); e.remove(); } }
 
 function checkOrderDup(name, addr) {
   const today = new Date().toISOString().slice(0, 10);
@@ -3308,14 +3318,18 @@ function recalcOrderTotal() {
     goodsTotalUSD += qty * price;
   });
 
+  // 防护：汇率无效时重置为 1
+  const rate = _orderExchangeRate || 1;
+  if (!isFinite(rate) || rate <= 0) { _orderExchangeRate = 1; }
+
   const sym = curSym(_settlementCurrency);
-  const goodsTotalCur = goodsTotalUSD / _orderExchangeRate; // 转为结算货币
+  const goodsTotalCur = goodsTotalUSD / (_orderExchangeRate || 1); // 转为结算货币
   const gEl = document.getElementById('order-goods-total');
   if (gEl) gEl.textContent = `${sym}${goodsTotalCur.toFixed(2)}`;
 
   // 运费：用户填的是结算货币金额，需转为 USD 计算手续费
   const sFeeCur = parseFloat(document.getElementById('order-shipping-fee')?.value) || 0;
-  const sFeeUSD = sFeeCur * _orderExchangeRate;
+  const sFeeUSD = sFeeCur * (_orderExchangeRate || 1);
   const subtotalUSD = goodsTotalUSD + sFeeUSD;
 
   // 付款方式手续费（USD 计算，结果也转回结算货币）
@@ -3328,7 +3342,7 @@ function recalcOrderTotal() {
   };
   const feeConfig = FEE_RATES[method];
   const handlingFeeUSD = feeConfig ? (subtotalUSD * feeConfig.rate + feeConfig.fixed) : 0;
-  const handlingFeeCur = handlingFeeUSD / _orderExchangeRate;
+  const handlingFeeCur = handlingFeeUSD / (_orderExchangeRate || 1);
   const hEl = document.getElementById('order-handling-fee');
   if (hEl) {
     if (feeConfig) {
@@ -3343,8 +3357,8 @@ function recalcOrderTotal() {
   }
   // 订单总额 = 货物 + 运费，不含手续费（手续费从利润扣）
   const grandTotalUSD = subtotalUSD;
-  const grandTotalCur = grandTotalUSD / _orderExchangeRate;
-  const totalCNY = grandTotalUSD * _orderUsdToCny;
+  const grandTotalCur = grandTotalUSD / (_orderExchangeRate || 1);
+  const totalCNY = grandTotalUSD * (_orderUsdToCny || 7.25);
   const tEl = document.getElementById('order-grand-total');
   if (tEl) tEl.textContent = `${_settlementCurrency} ${grandTotalCur.toFixed(2)}`;
   const cEl = document.getElementById('order-cny-total');
