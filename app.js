@@ -3257,21 +3257,43 @@ async function autoQuoteOrder() {
     if (!pid) continue;
     const product = allProducts.find(p => p.id === pid);
     if (!product) continue;
-    // 用报价助手的逻辑查价格，同时尝试用 short_name/sku 匹配
-    let matches = quoteFindByNameOrCode(product.name);
-    if ((!matches || matches.length === 0) && product.short_name) {
-      matches = quoteFindByNameOrCode(product.short_name);
+
+    // 匹配策略：SKU 精确匹配优先（一对一），再用 name/short_name 模糊匹配
+    let hit = null;
+
+    // 1. SKU 精确匹配（最可靠）
+    if (product.sku) {
+      const skuKw = normalizeStr(product.sku);
+      const skuHit = QUOTE_PRODUCTS.find(p => normalizeStr(p.code) === skuKw);
+      if (skuHit) hit = skuHit;
     }
-    if ((!matches || matches.length === 0) && product.sku) {
-      matches = quoteFindByNameOrCode(product.sku);
+
+    // 2. 产品名精确匹配 code（如 name="RT20" 直接匹配 code="RT20"）
+    if (!hit) {
+      const nameKw = normalizeStr(product.name);
+      const codeHit = QUOTE_PRODUCTS.find(p => normalizeStr(p.code) === nameKw);
+      if (codeHit) hit = codeHit;
     }
-    if (!matches || matches.length === 0) { skipped++; continue; }
-    // 如果多个匹配，优先取 sku 精确匹配
-    let hit = matches[0];
-    if (matches.length > 1 && product.sku) {
-      const skuMatch = matches.find(m => m.code === product.sku);
-      if (skuMatch) hit = skuMatch;
+
+    // 3. short_name 精确匹配 code
+    if (!hit && product.short_name) {
+      const snKw = normalizeStr(product.short_name);
+      const snHit = QUOTE_PRODUCTS.find(p => normalizeStr(p.code) === snKw);
+      if (snHit) hit = snHit;
     }
+
+    // 4. 模糊匹配（name/short_name），取第一个但记录警告
+    if (!hit) {
+      let matches = quoteFindByNameOrCode(product.name);
+      if ((!matches || matches.length === 0) && product.short_name) {
+        matches = quoteFindByNameOrCode(product.short_name);
+      }
+      if (matches && matches.length > 0) {
+        hit = matches[0];
+      }
+    }
+
+    if (!hit) { skipped++; continue; }
     const priceInput = document.getElementById(`item-price-${idx}`);
     if (priceInput) {
       priceInput.value = hit.price;
