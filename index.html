@@ -517,8 +517,9 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
           <option value="crypto">🔗 加密货币 (2.5%)</option>
         </select>
       </div>
-      <div class="flex justify-between items-center"><span class="text-xs text-gray-600">手续费</span><span id="order-handling-fee" class="text-sm font-bold text-red-600">$0.00</span></div>
+      <div class="flex justify-between items-center"><span class="text-xs text-gray-600">手续费<span class="text-gray-400 ml-1">（从利润扣除）</span></span><span id="order-handling-fee" class="text-sm font-bold text-red-500">$0.00</span></div>
       <div class="flex justify-between items-center pt-2 border-t border-blue-100"><span class="text-sm font-bold text-gray-700">订单总金额</span><span id="order-grand-total" class="text-lg font-bold text-green-700">- USD</span></div>
+      <div class="text-right text-xs text-gray-400 mb-1">总额 = 货物 + 运费，不含手续费</div>
       <div class="flex justify-between items-center"><span class="text-xs text-gray-500">≈ 人民币</span><span id="order-cny-total" class="text-xs text-gray-500">-</span></div>
     </div>
   </div>
