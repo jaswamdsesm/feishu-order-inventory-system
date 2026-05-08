@@ -1116,7 +1116,7 @@ async function markDelivered(id) {
       p_order_no: o.order_no,
       p_customer_name: o.customer_name || '',
       p_customer_phone: o.customer_phone || '',
-      p_address: o.address || o.customer_address || '',
+      p_customer_address: o.customer_address || o.address || '',
       p_country: o.country || '',
       p_product_summary: o.product_summary || '',
       p_total_quantity: o.total_quantity || 0,
