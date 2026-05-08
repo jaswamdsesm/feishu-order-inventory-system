@@ -472,6 +472,16 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
     <!-- 价格汇总 -->
     <div class="bg-blue-50 rounded-xl p-4 space-y-2">
       <p class="text-xs text-gray-500 font-medium">价格汇总</p>
+      <div class="flex justify-between items-center">
+        <span class="text-xs text-gray-600">结算货币</span>
+        <select id="order-settlement-currency" onchange="onSettlementCurrencyChange()" class="px-2 py-1 rounded border border-gray-200 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+          <option value="USD">💵 USD 美元</option>
+          <option value="EUR">💶 EUR 欧元</option>
+          <option value="AUD">🇦🇺 AUD 澳元</option>
+          <option value="CAD">🇨🇦 CAD 加元</option>
+        </select>
+      </div>
+      <div class="flex justify-between items-center text-xs text-gray-400"><span>实时汇率</span><span id="order-exchange-rate">加载中…</span></div>
       <div class="flex justify-between items-center"><span class="text-xs text-gray-600">货物总价</span><span id="order-goods-total" class="text-sm font-bold text-blue-700">- USD</span></div>
       <div class="flex justify-between items-center">
         <span class="text-xs text-gray-600">运费</span>
@@ -490,6 +500,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
       </div>
       <div class="flex justify-between items-center"><span class="text-xs text-gray-600">手续费</span><span id="order-handling-fee" class="text-sm font-bold text-red-600">$0.00</span></div>
       <div class="flex justify-between items-center pt-2 border-t border-blue-100"><span class="text-sm font-bold text-gray-700">订单总金额</span><span id="order-grand-total" class="text-lg font-bold text-green-700">- USD</span></div>
+      <div class="flex justify-between items-center"><span class="text-xs text-gray-500">≈ 人民币</span><span id="order-cny-total" class="text-xs text-gray-500">-</span></div>
     </div>
   </div>
   <div class="flex gap-3 px-5 py-4 border-t border-gray-100 flex-shrink-0"><button onclick="closeModal('modal-order')" class="flex-1 btn-touch py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500">取消</button><button onclick="saveOrder()" id="btn-save-order" class="flex-1 btn-touch py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">保存订单</button></div>
