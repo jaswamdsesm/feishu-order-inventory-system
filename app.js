@@ -417,7 +417,7 @@ async function init() {
       hideLoading();
       applyRole();
       // 预加载运费模板和产品重量数据（避免首次新增订单时运费识别失败）
-      try { loadShippingTemplates(); } catch (e) { console.warn('预加载运费模板失败', e); }
+      try { await loadShippingTemplates(); } catch (e) { console.warn('预加载运费模板失败', e); }
       try { await loadWeightProducts(); } catch (e) { console.warn('预加载产品重量失败', e); }
       switchPage('dashboard');
       loadProfiles();  // 后台加载，不阻塞渲染
@@ -958,7 +958,11 @@ function renderOrders() {
   document.getElementById('orders-empty').classList.add('hidden');
   document.getElementById('orders-list').innerHTML = filtered.map(o => {
     const items = allOrderItems.filter(i => i.order_id === o.id);
-    const totalUSD = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
+    let totalUSD = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
+    // 防护：如果 items 计算为 0 但 orders 表有值，回退到 total_amount
+    if (totalUSD === 0 && items.length > 0 && (o.total_amount || 0) > 0) {
+      totalUSD = o.total_amount;
+    }
     const cur = o.settlement_currency || 'USD';
     const rate = o.exchange_rate || 1; // 1 cur = ? USD
     const sym = curSym(cur);
@@ -2847,24 +2851,46 @@ let weightProducts = [];
 const WEIGHT_PRODUCT_KEY = 'oi_weight_products';
 
 function loadWeightProducts() {
-  try {
-    const raw = localStorage.getItem(WEIGHT_PRODUCT_KEY);
-    weightProducts = raw ? JSON.parse(raw) : [];
-    // 迁移旧数据：补全 type 字段
-    let changed = false;
-    weightProducts.forEach(p => {
-      if (!p.type) {
-        p.type = (p.capacity && p.capacity > 0) ? 'packaging' : 'product';
-        changed = true;
-      }
-    });
-    if (changed) saveWeightProductsToStorage();
-  } catch (e) { weightProducts = []; }
-  return Promise.resolve();
+  return sb.from('weight_products').select('*').order('type').then(({ data, error }) => {
+    if (!error && data && data.length > 0) {
+      weightProducts = data.map(p => ({
+        id: p.id, name: p.name, type: p.type || 'product',
+        net_weight: parseFloat(p.net_weight) || 0,
+        gross_weight: parseFloat(p.gross_weight) || 0,
+        capacity: parseInt(p.capacity) || 0
+      }));
+      localStorage.setItem(WEIGHT_PRODUCT_KEY, JSON.stringify(weightProducts));
+    } else {
+      // 回退到 localStorage
+      try {
+        const raw = localStorage.getItem(WEIGHT_PRODUCT_KEY);
+        weightProducts = raw ? JSON.parse(raw) : [];
+        let changed = false;
+        weightProducts.forEach(p => {
+          if (!p.type) {
+            p.type = (p.capacity && p.capacity > 0) ? 'packaging' : 'product';
+            changed = true;
+          }
+        });
+        if (changed) saveWeightProductsToStorage();
+      } catch (e) { weightProducts = []; }
+    }
+  }).catch(() => {
+    try {
+      const raw = localStorage.getItem(WEIGHT_PRODUCT_KEY);
+      weightProducts = raw ? JSON.parse(raw) : [];
+    } catch (e) { weightProducts = []; }
+  });
 }
 
 function saveWeightProductsToStorage() {
   localStorage.setItem(WEIGHT_PRODUCT_KEY, JSON.stringify(weightProducts));
+  // 同步到 Supabase
+  sb.rpc('sync_weight_products', { p_data: JSON.stringify(weightProducts) }).then(() => {
+    console.log('产品重量库已同步到云端');
+  }).catch(err => {
+    console.warn('产品重量库云端同步失败:', err);
+  });
 }
 
 function renderWeightProducts() {
@@ -3087,25 +3113,49 @@ function saveWeightProduct() {
 }
 
 function loadShippingTemplates() {
-  try {
-    const raw = localStorage.getItem(SHIP_TPL_KEY);
-    shippingTemplates = raw ? JSON.parse(raw) : [];
-    // 迁移：修复 delivey_time 拼写错误 → delivery_time
-    let migrated = false;
-    shippingTemplates.forEach(t => {
-      if (t.delivey_time !== undefined && t.delivery_time === undefined) {
-        t.delivery_time = t.delivey_time;
-        delete t.delivey_time;
-        migrated = true;
-      }
-    });
-    if (migrated) saveShippingTemplatesToStorage();
-  } catch (e) { shippingTemplates = []; }
-  return Promise.resolve();
+  return sb.from('shipping_templates').select('*').order('country').then(({ data, error }) => {
+    if (!error && data && data.length > 0) {
+      shippingTemplates = data.map(t => ({
+        id: t.id, country: t.country, channel: t.channel, currency: t.currency,
+        spec_type: t.spec_type || '', delivery_time: t.delivery_time || '',
+        first_weight: parseFloat(t.first_weight) || 0,
+        first_price: parseFloat(t.first_price) || 0,
+        add_weight: parseFloat(t.add_weight) || 0,
+        add_price: parseFloat(t.add_price) || 0
+      }));
+      localStorage.setItem(SHIP_TPL_KEY, JSON.stringify(shippingTemplates));
+    } else {
+      // 回退到 localStorage
+      try {
+        const raw = localStorage.getItem(SHIP_TPL_KEY);
+        shippingTemplates = raw ? JSON.parse(raw) : [];
+        let migrated = false;
+        shippingTemplates.forEach(t => {
+          if (t.delivey_time !== undefined && t.delivery_time === undefined) {
+            t.delivery_time = t.delivey_time;
+            delete t.delivey_time;
+            migrated = true;
+          }
+        });
+        if (migrated) saveShippingTemplatesToStorage();
+      } catch (e) { shippingTemplates = []; }
+    }
+  }).catch(() => {
+    try {
+      const raw = localStorage.getItem(SHIP_TPL_KEY);
+      shippingTemplates = raw ? JSON.parse(raw) : [];
+    } catch (e) { shippingTemplates = []; }
+  });
 }
 
 function saveShippingTemplatesToStorage() {
   localStorage.setItem(SHIP_TPL_KEY, JSON.stringify(shippingTemplates));
+  // 同步到 Supabase
+  sb.rpc('sync_shipping_templates', { p_data: JSON.stringify(shippingTemplates) }).then(() => {
+    console.log('运费模板已同步到云端');
+  }).catch(err => {
+    console.warn('运费模板云端同步失败:', err);
+  });
 }
 
 function renderShippingPage() {
@@ -3431,8 +3481,9 @@ async function autoQuoteOrder() {
 }
 
 async function autoCalcShipping() {
-  // 强制从 localStorage 加载最新模板（避免在订单页面未切换过运费助手时报空）
-  loadShippingTemplates();
+  // 强制从 Supabase/localStorage 加载最新模板
+  await loadShippingTemplates();
+  await loadWeightProducts();
   const country = document.getElementById('order-customer-country')?.value.trim();
   if (!country) { showToast('请先选择国家', 'warning'); return; }
   if (!isCountryAllowed(country)) {
