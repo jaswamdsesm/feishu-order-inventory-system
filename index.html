@@ -31,6 +31,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC
 #feishu-loading .loading-inner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:120px;text-align:center}
 .spinner{display:block;width:40px;height:40px;margin:0 auto 16px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.date-picker-panel{position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:60;padding:10px;width:260px}
+.date-picker-panel .dp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.date-picker-panel .dp-header button{background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:#6b7280;font-size:14px}
+.date-picker-panel .dp-header button:hover{background:#f3f4f6}
+.date-picker-panel .dp-header span{font-size:13px;font-weight:600;color:#111827}
+.date-picker-panel .dp-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11px;color:#9ca3af;margin-bottom:4px}
+.date-picker-panel .dp-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.date-picker-panel .dp-day{width:32px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:12px;cursor:pointer;color:#374151;transition:background .15s}
+.date-picker-panel .dp-day:hover{background:#eff6ff}
+.date-picker-panel .dp-day.other-month{color:#d1d5db}
+.date-picker-panel .dp-day.today{font-weight:700;color:#2563eb}
+.date-picker-panel .dp-day.selected{background:#2563eb;color:#fff}
+.date-picker-panel .dp-day.selected:hover{background:#1d4ed8}
 .stock-warn{animation:pulse-warn 1.5s infinite}
 @keyframes pulse-warn{0%,100%{background:rgba(239,68,68,.08)}50%{background:rgba(239,68,68,.18)}}
 ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:#c4c4c4;border-radius:4px}
@@ -172,9 +185,13 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
           <!-- 国家筛选 -->
           <input type="text" id="order-country-filter" placeholder="国家筛选…" oninput="renderOrders()" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[90px]"/>
           <!-- 日期筛选 -->
-          <input type="date" id="order-date-from" onchange="renderOrders()" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+          <div class="relative" id="wrap-date-from">
+            <input type="text" id="order-date-from" readonly placeholder="起始日期" onfocus="openDatePicker('order-date-from')" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer w-[120px]"/>
+          </div>
           <span class="text-gray-300 text-xs">至</span>
-          <input type="date" id="order-date-to" onchange="renderOrders()" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+          <div class="relative" id="wrap-date-to">
+            <input type="text" id="order-date-to" readonly placeholder="截止日期" onfocus="openDatePicker('order-date-to')" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer w-[120px]"/>
+          </div>
           <!-- 排序 - 自定义下拉 -->
           <div class="relative" id="order-sort-dropdown">
             <button onclick="toggleDropdown('order-sort-dropdown')" class="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white hover:bg-gray-50 transition-colors whitespace-nowrap min-w-[100px] justify-between">
@@ -454,7 +471,9 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
       <div class="grid grid-cols-2 gap-2">
         <div>
           <label class="block text-xs text-gray-500 mb-1">订单日期 *</label>
-          <input id="order-date" type="date" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
+          <div class="relative" id="wrap-order-date">
+            <input id="order-date" type="text" readonly class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm cursor-pointer" onfocus="openDatePicker('order-date')"/>
+          </div>
         </div>
         <input id="order-customer-email" type="email" placeholder="电子邮箱（选填）" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm mt-5"/>
       </div>
