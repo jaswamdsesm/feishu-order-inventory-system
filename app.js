@@ -515,8 +515,8 @@ function applyRole() {
   if (shipAdmin) shipAdmin.classList.toggle('hidden', !isAdmin);
   document.getElementById('export-orders-dropdown').querySelector('button').classList.toggle('hidden', !isSuper);
   document.getElementById('export-orders-dropdown').querySelector('button').classList.toggle('inline-flex', isSuper);
-  document.getElementById('export-shipping-dropdown').querySelector('button').classList.toggle('hidden', !(isSuper || isAdmin || isEmployee));
-  document.getElementById('export-shipping-dropdown').querySelector('button').classList.toggle('inline-flex', isSuper || isAdmin || isEmployee);
+  document.getElementById('export-shipping-dropdown').querySelector('button').classList.toggle('hidden', !(isSuper || isAdmin));
+  document.getElementById('export-shipping-dropdown').querySelector('button').classList.toggle('inline-flex', isSuper || isAdmin);
   document.getElementById('btn-batch-upload-order').classList.toggle('hidden', !isAdmin);
   document.getElementById('btn-add-order').classList.remove('hidden');
   const avatar = document.getElementById('sidebar-avatar');
@@ -811,6 +811,102 @@ async function deleteProduct(id) {
     await loadProducts(); renderInventory();
     showToast('产品已删除', 'success');
   } catch (err) { showToast('删除失败:' + err.message, 'error'); }
+}
+
+// ============ 自定义日期选择器 ============
+let _dpState = { targetId: null, viewYear: 0, viewMonth: 0 };
+const _dpCallbacks = { 'order-date-from': () => renderOrders(), 'order-date-to': () => renderOrders(), 'order-date': () => {} };
+
+function openDatePicker(inputId) {
+  closeDatePicker();
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const wrapId = 'wrap-' + inputId;
+  const wrap = document.getElementById(wrapId) || input.parentElement;
+  // 解析当前值
+  const val = input.value || '';
+  const parts = val.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const now = new Date();
+  _dpState.viewYear = parts ? parseInt(parts[1]) : now.getFullYear();
+  _dpState.viewMonth = parts ? parseInt(parts[2]) - 1 : now.getMonth();
+  _dpState.targetId = inputId;
+  // 创建面板
+  const panel = document.createElement('div');
+  panel.className = 'date-picker-panel';
+  panel.id = '_dp_panel';
+  panel.onclick = e => e.stopPropagation();
+  wrap.style.position = 'relative';
+  wrap.appendChild(panel);
+  renderDPCalendar();
+  // 点击外部关闭
+  setTimeout(() => document.addEventListener('click', closeDatePicker), 0);
+}
+
+function closeDatePicker() {
+  const p = document.getElementById('_dp_panel');
+  if (p) p.remove();
+  _dpState.targetId = null;
+  document.removeEventListener('click', closeDatePicker);
+}
+
+function renderDPCalendar() {
+  const panel = document.getElementById('_dp_panel');
+  if (!panel) return;
+  const y = _dpState.viewYear, m = _dpState.viewMonth;
+  const firstDay = new Date(y, m, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const prevDays = new Date(y, m, 0).getDate();
+  const today = new Date();
+  const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+  const input = document.getElementById(_dpState.targetId);
+  const selectedStr = input ? input.value : '';
+  const weekLabels = ['日', '一', '二', '三', '四', '五', '六'];
+  let html = '<div class="dp-header"><button onclick="dpNav(-1)">&#9664;</button><span>' + y + '年' + (m + 1) + '月</span><button onclick="dpNav(1)">&#9654;</button></div>';
+  html += '<div class="dp-weekdays">' + weekLabels.map(w => '<span>' + w + '</span>').join('') + '</div>';
+  html += '<div class="dp-days">';
+  // 上月填充
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const d = prevDays - i;
+    html += '<div class="dp-day other-month" onclick="dpPick(' + y + ',' + (m - 1) + ',' + d + ')">' + d + '</div>';
+  }
+  // 本月
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    let cls = 'dp-day';
+    if (ds === todayStr) cls += ' today';
+    if (ds === selectedStr) cls += ' selected';
+    html += '<div class="' + cls + '" onclick="dpPick(' + y + ',' + m + ',' + d + ')">' + d + '</div>';
+  }
+  // 下月填充
+  const totalCells = firstDay + daysInMonth;
+  const remaining = (7 - totalCells % 7) % 7;
+  for (let d = 1; d <= remaining; d++) {
+    html += '<div class="dp-day other-month" onclick="dpPick(' + y + ',' + (m + 1) + ',' + d + ')">' + d + '</div>';
+  }
+  html += '</div>';
+  panel.innerHTML = html;
+}
+
+function dpNav(dir) {
+  _dpState.viewMonth += dir;
+  if (_dpState.viewMonth < 0) { _dpState.viewMonth = 11; _dpState.viewYear--; }
+  if (_dpState.viewMonth > 11) { _dpState.viewMonth = 0; _dpState.viewYear++; }
+  renderDPCalendar();
+}
+
+function dpPick(y, m, d) {
+  // 修正月份溢出
+  const date = new Date(y, m, d);
+  const ds = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+  const input = document.getElementById(_dpState.targetId);
+  if (input) {
+    input.value = ds;
+    input.dispatchEvent(new Event('change'));
+  }
+  closeDatePicker();
+  // 回调
+  const cb = _dpCallbacks[_dpState.targetId];
+  if (cb) cb();
 }
 
 // ============ 订单管理 ============
