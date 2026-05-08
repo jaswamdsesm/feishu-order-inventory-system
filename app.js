@@ -834,19 +834,27 @@ function openDatePicker(inputId) {
   const panel = document.createElement('div');
   panel.className = 'date-picker-panel';
   panel.id = '_dp_panel';
-  panel.onclick = e => e.stopPropagation();
   wrap.style.position = 'relative';
   wrap.appendChild(panel);
   renderDPCalendar();
-  // 点击外部关闭
-  setTimeout(() => document.addEventListener('click', closeDatePicker), 0);
+  // 点击外部关闭（用 mousedown 抢先于 blur，检查目标是否在面板或 input 内）
+  _dpState._handler = function(e) {
+    const p = document.getElementById('_dp_panel');
+    if (!p) return;
+    if (p.contains(e.target) || e.target === input) return;
+    closeDatePicker();
+  };
+  document.addEventListener('mousedown', _dpState._handler, true);
 }
 
 function closeDatePicker() {
   const p = document.getElementById('_dp_panel');
   if (p) p.remove();
+  if (_dpState._handler) {
+    document.removeEventListener('mousedown', _dpState._handler, true);
+    _dpState._handler = null;
+  }
   _dpState.targetId = null;
-  document.removeEventListener('click', closeDatePicker);
 }
 
 function renderDPCalendar() {
