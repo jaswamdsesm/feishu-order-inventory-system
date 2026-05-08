@@ -2726,17 +2726,35 @@ function updateShipTotal() {
   const el = document.getElementById('ship-total-boxes');
   if (el) el.textContent = total;
   const info = document.getElementById('ship-split-info');
-  if (!info) return;
-  const boxCap = parseInt(document.getElementById('ship-box-capacity')?.value) || 0;
-  if (!boxCap) {
-    info.classList.add('hidden');
+  const pkgDisplay = document.getElementById('ship-auto-pkg');
+  if (!info || total === 0) {
+    if (info) info.classList.add('hidden');
+    if (pkgDisplay) pkgDisplay.textContent = '';
     return;
   }
-  const pkgSel = document.getElementById('ship-packaging');
-  const pkgName = pkgSel ? (pkgSel.options[pkgSel.selectedIndex]?.text || '') : '';
-  const remainder = total % boxCap;
-  let numBoxes = Math.ceil(total / boxCap);
-  // 尽量均分：计算每箱基础数量，余数分散到前几箱
+
+  // 自动选择箱子（和 calcShipping / autoCalcShipping 同逻辑）
+  const packagingList = weightProducts.filter(w => w.type === 'packaging' && (w.capacity || 0) > 0);
+  if (packagingList.length === 0) {
+    info.classList.add('hidden');
+    if (pkgDisplay) pkgDisplay.textContent = '无可用外包装';
+    return;
+  }
+  packagingList.sort((a, b) => (a.capacity || 0) - (b.capacity || 0));
+  const TOLERANCE = 5;
+  let selectedPkg = packagingList.find(p => total <= (p.capacity || 0) + TOLERANCE);
+  if (!selectedPkg) selectedPkg = packagingList[packagingList.length - 1];
+  const boxCapacity = selectedPkg.capacity || 30;
+
+  // 尽量少开箱
+  let numBoxes = Math.ceil(total / (boxCapacity + TOLERANCE));
+  if (numBoxes < 1) numBoxes = 1;
+
+  // 更新自动选箱显示
+  if (pkgDisplay) {
+    pkgDisplay.textContent = `${selectedPkg.name}（容量${boxCapacity}盒）`;
+  }
+
   const baseQty = Math.floor(total / numBoxes);
   const extra = total % numBoxes;
   const boxDetails = [];
@@ -2883,14 +2901,6 @@ function renderShippingPage() {
   countrySel.value = currentCountry;
   updateChannelOptions();
 
-  // 填充外包装下拉（只显示外包装类型）
-  const pkgSel = document.getElementById('ship-packaging');
-  const currentPkg = pkgSel.value;
-  const pkgOptions = weightProducts.filter(p => p.type === 'packaging');
-  pkgSel.innerHTML = '<option value="">请选择外包装</option>' +
-    pkgOptions.map(p => `<option value="${p.id}">${esc(p.name)}${p.capacity ? '（参考容量：' + p.capacity + '盒/箱）' : ''}</option>`).join('');
-  pkgSel.value = currentPkg || '';
-
   // 渲染模板表格
   renderShippingTemplates();
 
@@ -2914,11 +2924,17 @@ function autoDetectSpecType(country) {
   const isAustralia = country.includes('澳大利亚') || country.includes('澳洲');
   const isEurope = !isAustralia && isEuropeanCountry(country);
   if (isAustralia) {
-    const packagingId = document.getElementById('ship-packaging')?.value;
-    const pkg = weightProducts.find(x => x.id === packagingId);
-    const pkgWeight = pkg ? (pkg.gross_weight || pkg.net_weight || 0) : 0;
-    const boxCapacity = parseInt(document.getElementById('ship-box-capacity')?.value) || 30;
-    const numBoxes = Math.ceil(weights.length / boxCapacity);
+    // 自动选择箱子（和 calcShipping / autoCalcShipping 同逻辑）
+    const packagingList = weightProducts.filter(w => w.type === 'packaging' && (w.capacity || 0) > 0);
+    if (packagingList.length === 0) return '';
+    packagingList.sort((a, b) => (a.capacity || 0) - (b.capacity || 0));
+    const TOLERANCE = 5;
+    let selectedPkg = packagingList.find(p => weights.length <= (p.capacity || 0) + TOLERANCE);
+    if (!selectedPkg) selectedPkg = packagingList[packagingList.length - 1];
+    const pkgWeight = selectedPkg.gross_weight || selectedPkg.net_weight || 0;
+    const boxCapacity = selectedPkg.capacity || 30;
+    let numBoxes = Math.ceil(weights.length / (boxCapacity + TOLERANCE));
+    if (numBoxes < 1) numBoxes = 1;
     const totalWeight = weights.reduce((s, w) => s + w, 0) + pkgWeight * numBoxes;
     return (totalWeight >= 22000 && totalWeight <= 50000) ? '大件' : '小件';
   }
@@ -3183,19 +3199,20 @@ async function autoCalcShipping() {
     showToast(tip, 'warning'); return;
   }
 
-  // 第二步：自动选择外包装（找能装下的最小箱子，允许偏差3盒）
+  // 第二步：自动选择外包装（找能装下的最小箱子，允许偏差5盒）
   const packagingList = weightProducts.filter(w => w.type === 'packaging' && (w.capacity || 0) > 0);
   if (packagingList.length === 0) {
     showToast('请先在产品重量库中添加外包装（需设置容量）', 'warning'); return;
   }
   packagingList.sort((a, b) => (a.capacity || 0) - (b.capacity || 0));
-  let selectedPkg = packagingList.find(p => totalVials <= (p.capacity || 0) + 3);
+  let selectedPkg = packagingList.find(p => totalVials <= (p.capacity || 0) + 5);
   if (!selectedPkg) selectedPkg = packagingList[packagingList.length - 1];
   const boxCapacity = selectedPkg.capacity || 30;
   const pkgWeight = selectedPkg.gross_weight || selectedPkg.net_weight || 0;
 
-  // 第三步：分箱（尽量均分，同时约束：盒数 ≤ 箱子容量，重量严格 < 22KG）
+  // 第三步：分箱（尽量少开箱，优先均分，约束：单箱重量 < 22KG）
   const MAX_BOX_WEIGHT = 21999;
+  const TOLERANCE = 5; // 容量偏差：每箱最多可超装5盒
 
   // 先按重量排序，交叉分配（轻+重+轻+重）让每箱总重量尽量均衡
   const sorted = [...vialWeightList].sort((a, b) => a - b);
@@ -3207,24 +3224,28 @@ async function autoCalcShipping() {
     interleaved.push(sorted[hi--]);
   }
 
-  // 计算最少箱数，尝试均分；重量或容量超限则增加箱数
-  let numBoxes = Math.ceil(totalVials / boxCapacity);
+  // 从最少箱数开始尝试，每箱允许超装 TOLERANCE 盒，尽量少开箱
+  let numBoxes = Math.ceil(totalVials / (boxCapacity + TOLERANCE));
+  if (numBoxes < 1) numBoxes = 1;
   let boxes = [];
   for (let attempt = 0; attempt < 20; attempt++) {
     const baseQty = Math.floor(totalVials / numBoxes);
     let extra = totalVials % numBoxes;
     const shipments = [];
     let idx = 0;
+    let valid = true;
     for (let b = 0; b < numBoxes; b++) {
       const qty = baseQty + (b < extra ? 1 : 0);
+      if (qty > boxCapacity + TOLERANCE) { valid = false; break; }
       shipments.push(interleaved.slice(idx, idx + qty));
       idx += qty;
     }
-    const allValid = shipments.every(ch =>
-      ch.length <= boxCapacity &&
-      ch.reduce((s, w) => s + w, 0) + pkgWeight <= MAX_BOX_WEIGHT
-    );
-    if (allValid) { boxes = shipments; break; }
+    if (valid && shipments.length === numBoxes) {
+      const allValid = shipments.every(ch =>
+        ch.reduce((s, w) => s + w, 0) + pkgWeight <= MAX_BOX_WEIGHT
+      );
+      if (allValid) { boxes = shipments; break; }
+    }
     numBoxes++;
   }
 
@@ -3235,7 +3256,7 @@ async function autoCalcShipping() {
     let currentWeight = 0;
     for (const w of vialWeightList) {
       const wouldBeWeight = currentWeight + w + pkgWeight;
-      if (currentBox.length >= boxCapacity || (currentBox.length > 0 && wouldBeWeight > MAX_BOX_WEIGHT)) {
+      if (currentBox.length >= boxCapacity + TOLERANCE || (currentBox.length > 0 && wouldBeWeight > MAX_BOX_WEIGHT)) {
         boxes.push(currentBox);
         currentBox = [];
         currentWeight = 0;
@@ -3321,19 +3342,35 @@ function curSym(currency) {
 
 function calcShipping() {
   const channelId = document.getElementById('ship-channel').value;
-  const packagingId = document.getElementById('ship-packaging').value;
-  const boxCapacity = parseInt(document.getElementById('ship-box-capacity').value) || 0;
 
   if (!channelId) { showToast('请选择物流渠道', 'warning'); return; }
   if (shipEntries.length === 0) { showToast('请添加至少一个产品条目', 'warning'); return; }
   for (const e of shipEntries) {
     if (!e.productId) { showToast('请选择产品', 'warning'); return; }
   }
-  if (!packagingId) { showToast('请选择外包装', 'warning'); return; }
-  if (!boxCapacity || boxCapacity <= 0) { showToast('请填写每箱容量', 'warning'); return; }
 
-  const pkgProduct = weightProducts.find(x => x.id === packagingId);
-  const pkgWeight = pkgProduct ? (pkgProduct.gross_weight || pkgProduct.net_weight || 0) : 0;
+  // 自动选择外包装（和订单页 autoCalcShipping 同逻辑）
+  const packagingList = weightProducts.filter(w => w.type === 'packaging' && (w.capacity || 0) > 0);
+  if (packagingList.length === 0) { showToast('请先在产品重量库中添加外包装（需设置容量）', 'warning'); return; }
+  packagingList.sort((a, b) => (a.capacity || 0) - (b.capacity || 0));
+
+  // 展开所有盒
+  let allBoxes = [];
+  shipEntries.forEach(entry => {
+    const p = weightProducts.find(x => x.id === entry.productId);
+    if (!p) return;
+    const w = p.gross_weight || p.net_weight || 0;
+    for (let i = 0; i < entry.qty; i++) {
+      allBoxes.push({ name: p.name, weight: w });
+    }
+  });
+  const totalBoxes = allBoxes.length;
+
+  // 找能装下的最小箱子（允许偏差5盒）
+  let selectedPkg = packagingList.find(p => totalBoxes <= (p.capacity || 0) + 5);
+  if (!selectedPkg) selectedPkg = packagingList[packagingList.length - 1];
+  const boxCapacity = selectedPkg.capacity || 30;
+  const pkgWeight = selectedPkg.gross_weight || selectedPkg.net_weight || 0;
 
   const tpl = shippingTemplates.find(t => t.id === channelId);
   if (!tpl) { showToast('渠道不存在', 'error'); return; }
@@ -3342,61 +3379,76 @@ function calcShipping() {
   const firstW = tpl.first_unit_qty ?? tpl.first_weight ?? 0;
   const addW = tpl.add_unit_qty ?? tpl.add_weight ?? 0;
 
-  // 展开所有盒（只记录产品重量，不含外包装）
-  let allBoxes = [];
-  shipEntries.forEach(entry => {
-    const p = weightProducts.find(x => x.id === entry.productId);
-    if (!p) return;
-    const w = p.gross_weight || p.net_weight || 0; // 只算产品重量
-    for (let i = 0; i < entry.qty; i++) {
-      allBoxes.push({ name: p.name, weight: w });
-    }
-  });
+  // 分箱：尽量少开箱，允许每箱超装5盒，约束单箱重量 < 22KG
+  const TOLERANCE = 5;
+  const MAX_BOX_WEIGHT = 21999;
 
-  const totalBoxes = allBoxes.length;
-
-  // 分箱逻辑：
-  //   boxCapacity = 每箱最多装多少盒
-  //   余数 ≤ 10：允许塞进最后一箱（不浪费空间）
-  //   余数 > 10：不强行塞，多开一箱，尽量平分
-  let numBoxes;
-  const remainder = totalBoxes % boxCapacity;
-  if (remainder === 0) {
-    numBoxes = totalBoxes / boxCapacity;
-  } else if (remainder <= 10) {
-    // 余数少，直接塞进最后一箱
-    numBoxes = Math.floor(totalBoxes / boxCapacity) + 1;
-  } else {
-    // 余数多，多开一箱，后面会尽量平分
-    numBoxes = Math.ceil(totalBoxes / boxCapacity);
+  // 按重量排序，交叉分配让每箱均衡
+  const sortedItems = [...allBoxes].sort((a, b) => a.weight - b.weight);
+  const interleaved = [];
+  let lo = 0, hi = sortedItems.length - 1;
+  while (lo <= hi) {
+    if (lo === hi) { interleaved.push(sortedItems[lo]); break; }
+    interleaved.push(sortedItems[lo++]);
+    interleaved.push(sortedItems[hi--]);
   }
 
-  // 尽量平分到各箱（差异不超过1盒）
-  const baseQty = Math.floor(totalBoxes / numBoxes);
-  let extra = totalBoxes % numBoxes;
+  let numBoxes = Math.ceil(totalBoxes / (boxCapacity + TOLERANCE));
+  if (numBoxes < 1) numBoxes = 1;
   let shipments = [];
-  let idx = 0;
-  for (let b = 0; b < numBoxes; b++) {
-    const qty = baseQty + (b < extra ? 1 : 0);
-    shipments.push(allBoxes.slice(idx, idx + qty));
-    idx += qty;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const baseQty = Math.floor(totalBoxes / numBoxes);
+    let extra = totalBoxes % numBoxes;
+    const tmpShipments = [];
+    let idx = 0;
+    let valid = true;
+    for (let b = 0; b < numBoxes; b++) {
+      const qty = baseQty + (b < extra ? 1 : 0);
+      if (qty > boxCapacity + TOLERANCE) { valid = false; break; }
+      tmpShipments.push(interleaved.slice(idx, idx + qty));
+      idx += qty;
+    }
+    if (valid && tmpShipments.length === numBoxes) {
+      const allValid = tmpShipments.every(ch =>
+        ch.reduce((s, b) => s + b.weight, 0) + pkgWeight <= MAX_BOX_WEIGHT
+      );
+      if (allValid) { shipments = tmpShipments; break; }
+    }
+    numBoxes++;
   }
 
-  // 逐箱计费（外包装重量按箱加，不是按盒加）
+  // 降级：贪心算法
+  if (shipments.length === 0) {
+    shipments = [];
+    let currentBox = [];
+    let currentWeight = 0;
+    for (const item of allBoxes) {
+      const wouldBeWeight = currentWeight + item.weight + pkgWeight;
+      if (currentBox.length >= boxCapacity + TOLERANCE || (currentBox.length > 0 && wouldBeWeight > MAX_BOX_WEIGHT)) {
+        shipments.push(currentBox);
+        currentBox = [];
+        currentWeight = 0;
+      }
+      currentBox.push(item);
+      currentWeight += item.weight;
+    }
+    if (currentBox.length > 0) shipments.push(currentBox);
+  }
+
+  // 逐箱计费
   let totalFreight = 0;
   let detailLines = [];
-  const pkgName = pkgProduct ? pkgProduct.name : '';
-  detailLines.push(`共 ${totalBoxes} 盒，分 ${numBoxes} 箱（每箱 ${boxCapacity} 盒，外包装：${pkgName}）`);
+  const pkgName = selectedPkg.name;
+  detailLines.push(`共 ${totalBoxes} 盒，分 ${shipments.length} 箱（每箱≤${boxCapacity + TOLERANCE}盒，外包装：${pkgName}）`);
 
   shipments.forEach((boxes, bIdx) => {
     const productWeight = boxes.reduce((s, b) => s + b.weight, 0);
-    const weight = productWeight + pkgWeight; // 外包装重量只加一次（每箱）
+    const weight = productWeight + pkgWeight;
     let freight = 0;
     if (weight <= firstW) {
       freight = tpl.first_price;
     } else {
-      const extraW = weight - firstW;
-      const extraUnits = Math.ceil(extraW / addW);
+      const extraUnits = Math.ceil((weight - firstW) / addW);
       freight = tpl.first_price + extraUnits * tpl.add_price;
     }
     totalFreight += freight;
