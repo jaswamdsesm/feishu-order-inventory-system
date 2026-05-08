@@ -85,6 +85,42 @@ async function getExchangeRates() {
   return _exchangeRates || { EUR: 0.92, AUD: 1.53, CAD: 1.36 };
 }
 
+// 更新结算货币汇率显示
+async function onSettlementCurrencyChange() {
+  _settlementCurrency = document.getElementById('order-settlement-currency')?.value || 'USD';
+  const rates = await getExchangeRates();
+  _orderUsdToCny = rates.CNY || 7.25;
+  // 1 结算货币 = ? USD：USD→rates 是 1USD=?cur，所以 1cur = 1/rates[cur]
+  if (_settlementCurrency === 'USD') {
+    _orderExchangeRate = 1;
+  } else {
+    _orderExchangeRate = 1 / (rates[_settlementCurrency] || 1);
+  }
+  const rateEl = document.getElementById('order-exchange-rate');
+  if (rateEl) {
+    const cnyRate = _orderUsdToCny * _orderExchangeRate;
+    rateEl.textContent = `1 ${_settlementCurrency} = ¥${cnyRate.toFixed(4)}`;
+  }
+  recalcOrderTotal();
+}
+
+async function loadOrderExchangeRate() {
+  // 打开订单弹窗时调用，初始化汇率
+  const rates = await getExchangeRates();
+  _orderUsdToCny = rates.CNY || 7.25;
+  const cur = _settlementCurrency;
+  if (cur === 'USD') {
+    _orderExchangeRate = 1;
+  } else {
+    _orderExchangeRate = 1 / (rates[cur] || 1);
+  }
+  const rateEl = document.getElementById('order-exchange-rate');
+  if (rateEl) {
+    const cnyRate = _orderUsdToCny * _orderExchangeRate;
+    rateEl.textContent = `1 ${cur} = ¥${cnyRate.toFixed(4)}`;
+  }
+}
+
 function normalizeStr(s) {
   return (s || '').toLowerCase().replace(/[\s\-_.]/g, '').trim();
 }
@@ -818,7 +854,11 @@ function renderOrders() {
   document.getElementById('orders-empty').classList.add('hidden');
   document.getElementById('orders-list').innerHTML = filtered.map(o => {
     const items = allOrderItems.filter(i => i.order_id === o.id);
-    const total = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
+    const totalUSD = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
+    const cur = o.settlement_currency || 'USD';
+    const rate = o.exchange_rate || 1; // 1 cur = ? USD
+    const sym = curSym(cur);
+    const totalCur = totalUSD / rate;
     const phoneHtml = phoneHidden ? (o.customer_phone ? '***' : '') : esc(o.customer_phone || '');
     const addrHtml = phoneHidden ? (o.customer_address ? '***' : '') : esc(o.customer_address || '');
     const sc = { pending: 'border-yellow-300 bg-yellow-50', shipped: 'border-blue-300 bg-blue-50', completed: 'border-green-300 bg-green-50', cancelled: 'border-gray-200 bg-gray-50' };
@@ -829,11 +869,16 @@ function renderOrders() {
     const canEdit = isAdmin && !['shipped','completed'].includes(o.status);
     const btnHtml = canEdit ? `<button onclick="openOrderModal('${o.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteOrder('${o.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
     const deliveredBtn = (o.status === 'shipped' && isAdmin) ? `<button onclick="markDelivered('${o.id}')" class="text-xs text-blue-600 hover:underline mr-2">📦 已送达</button>` : '';
+    const cnyHtml = o.total_cny > 0 ? `<span class="text-xs text-gray-400">≈ ¥${parseFloat(o.total_cny).toFixed(2)}</span>` : '';
+    const shippingCur = rate > 0 ? ((o.shipping_fee || 0) * rate / rate).toFixed(2) : (o.shipping_fee || 0);
+    // shipping_fee 存的是结算货币金额，直接用
+    const handlingCur = rate > 0 ? ((o.handling_fee || 0)).toFixed(2) : '0.00';
     return `<div class="order-card border ${sc[o.status] || 'border-gray-200'} rounded-xl p-4 bg-white shadow-sm">
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
           <span class="font-bold text-base">${esc(o.order_no)}</span>
           <span class="text-xs px-2 py-0.5 rounded-full ${sc2[o.status] || ''} font-medium bg-opacity-50">${statusText(o.status)}</span>
+          ${cur !== 'USD' ? '<span class="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">' + cur + '</span>' : ''}
         </div>
         <span class="text-sm text-gray-700 font-semibold">${(o.created_at || '').slice(0, 10)}</span>
       </div>
@@ -846,12 +891,13 @@ function renderOrders() {
       </div>
       ${o.customer_address ? '<div class="text-xs text-gray-400 mb-2 truncate">📍 ' + addrHtml + '</div>' : ''}
       ${trackHtml}
-      <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 overflow-hidden">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + esc(p.sku) : ''; return `<div class="flex items-center justify-between text-xs min-w-0"><span class="truncate">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span><span class="text-gray-500 shrink-0 ml-2">$${((i.unit_price || 0) * i.quantity).toFixed(2)}</span></div>`; }).join('')}</div>
+      <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 overflow-hidden">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + esc(p.sku) : ''; const lineCur = ((i.unit_price || 0) * i.quantity / rate); return `<div class="flex items-center justify-between text-xs min-w-0"><span class="truncate">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span><span class="text-gray-500 shrink-0 ml-2">${sym}${lineCur.toFixed(2)}</span></div>`; }).join('')}</div>
       <div class="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-sm text-green-700">$${total.toFixed(2)}</span>
-          ${o.shipping_fee > 0 ? '<span class="text-xs text-orange-500">运费$' + parseFloat(o.shipping_fee).toFixed(2) + '</span>' : ''}
-          ${o.handling_fee > 0 ? '<span class="text-xs text-red-500">手续费$' + parseFloat(o.handling_fee).toFixed(2) + '</span>' : ''}
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="font-bold text-sm text-green-700">${sym}${totalCur.toFixed(2)}</span>
+          ${o.shipping_fee > 0 ? '<span class="text-xs text-orange-500">运费' + sym + parseFloat(o.shipping_fee).toFixed(2) + '</span>' : ''}
+          ${o.handling_fee > 0 ? '<span class="text-xs text-red-500">手续费' + sym + parseFloat(o.handling_fee).toFixed(2) + '</span>' : ''}
+          ${cnyHtml}
         </div>
         <div class="flex items-center gap-1">${shipBtn}${deliveredBtn}${btnHtml}</div>
       </div>
@@ -900,7 +946,10 @@ async function confirmShip() {
       p_handling_fee: o.handling_fee || 0,
       p_order_date: o.order_date || null,
       p_remark: o.remark || '',
-      p_tracking_no: trackingNo
+      p_tracking_no: trackingNo,
+      p_settlement_currency: o.settlement_currency || 'USD',
+      p_exchange_rate: o.exchange_rate || 1,
+      p_total_cny: o.total_cny || 0
     });
     if (error) throw error;
     const idx = allOrders.findIndex(o => o.id === orderId);
@@ -920,7 +969,7 @@ function toggleTrackingRow() {
   document.getElementById('order-tracking-row')?.classList.toggle('hidden', status !== 'shipped');
 }
 
-function openOrderModal(id) {
+async function openOrderModal(id) {
   editingOrderId = id || null;
   document.getElementById('order-modal-title').textContent = id ? '编辑订单' : '新增订单';
   document.getElementById('order-id').value = id || '';
@@ -930,6 +979,9 @@ function openOrderModal(id) {
   // 默认填入今天日期
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('order-date').value = today;
+  // 默认结算货币 USD
+  document.getElementById('order-settlement-currency').value = 'USD';
+  _settlementCurrency = 'USD';
   if (id) {
     const o = allOrders.find(x => x.id === id);
     if (o) {
@@ -944,10 +996,13 @@ function openOrderModal(id) {
       document.getElementById('order-shipping-fee').value = o.shipping_fee || '';
       document.getElementById('order-tracking-no').value = o.tracking_no || '';
       document.getElementById('order-payment-method').value = o.payment_method || '';
+      // 回填结算货币和汇率
+      _settlementCurrency = o.settlement_currency || 'USD';
+      document.getElementById('order-settlement-currency').value = _settlementCurrency;
+      _orderExchangeRate = o.exchange_rate || 1;
       // 回填订单日期（取 created_at 的日期部分）
       if (o.created_at) document.getElementById('order-date').value = o.created_at.slice(0, 10);
       document.getElementById('order-tracking-row').classList.toggle('hidden', o.status !== 'shipped');
-      recalcOrderTotal();
       document.getElementById('order-owner-select').value = o.owner_name || '';
       const items = allOrderItems.filter(i => i.order_id === id);
       items.forEach(i => addOrderItemRow(i));
@@ -963,6 +1018,9 @@ function openOrderModal(id) {
     document.getElementById('order-payment-method').value = '';
     addOrderItemRow();
   }
+  // 加载汇率后重新计算
+  await loadOrderExchangeRate();
+  recalcOrderTotal();
   openModal('modal-order');
 }
 
@@ -1079,6 +1137,13 @@ async function saveOrder() {
     }).join('，');
     const totalQty = items.reduce((s, i) => s + i.quantity, 0);
     const totalAmt = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
+    // 结算货币相关
+    const settlementCurrency = document.getElementById('order-settlement-currency')?.value || 'USD';
+    const exchangeRate = _orderExchangeRate; // 1 结算货币 = ? USD
+    const shippingUSD = (parseFloat(shippingFee) || 0) * exchangeRate;
+    const handlingUSD = handlingFee * exchangeRate;
+    const grandTotalUSD = totalAmt + shippingUSD + handlingUSD;
+    const totalCNY = grandTotalUSD * _orderUsdToCny;
     // 新增订单时生成 UUID
     const newOrderId = editingOrderId || crypto.randomUUID();
     const { data, error } = await sb.rpc('upsert_order', {
@@ -1099,7 +1164,10 @@ async function saveOrder() {
       p_handling_fee: handlingFee || 0,
       p_order_date: orderDate || null,
       p_remark: remark || '',
-      p_tracking_no: trackingNo || null
+      p_tracking_no: trackingNo || null,
+      p_settlement_currency: settlementCurrency,
+      p_exchange_rate: exchangeRate,
+      p_total_cny: parseFloat(totalCNY.toFixed(2))
     });
     if (error) throw error;
     closeModal('modal-order');
@@ -1143,7 +1211,10 @@ async function markDelivered(id) {
       p_payment_method: o.payment_method || null,
       p_handling_fee: o.handling_fee || 0,
       p_order_date: o.order_date || null,
-      p_remark: o.remark || ''
+      p_remark: o.remark || '',
+      p_settlement_currency: o.settlement_currency || 'USD',
+      p_exchange_rate: o.exchange_rate || 1,
+      p_total_cny: o.total_cny || 0
     });
     if (error) throw error;
     o.status = 'completed';
@@ -1227,7 +1298,10 @@ async function batchImportOrders(results) {
         p_handling_fee: 0,
         p_order_date: null,
         p_remark: r.remark || '',
-        p_tracking_no: null
+        p_tracking_no: null,
+        p_settlement_currency: 'USD',
+        p_exchange_rate: 1,
+        p_total_cny: 0
       });
       if (error) throw error;
       success++;
@@ -2568,7 +2642,19 @@ let shippingTemplates = [];
 const SHIP_TPL_KEY = 'oi_shipping_templates';
 const CURRENCY_SYMBOLS = { USD: '$', AUD: 'A$', CNY: '¥', EUR: '€', GBP: '£' };
 const PAYMENT_LABELS = { bank_transfer: '🏦 银行转账', paypal: '🅿️ PayPal', wise: '💚 Wise', crypto: '🔗 加密货币' };
+const CURRENCY_FULL = { USD: 'USD 美元', EUR: 'EUR 欧元', AUD: 'AUD 澳元', CAD: 'CAD 加元' };
 function curSym(c) { return CURRENCY_SYMBOLS[c] || c + ' '; }
+
+// ============ 结算货币 & 汇率 ============
+let _settlementCurrency = 'USD';
+let _orderExchangeRate = 1; // 结算货币→USD 的汇率（即 1 结算货币 = ? USD）
+let _orderUsdToCny = 7.25; // 1 USD = ? CNY
+
+function getCurrencyUsdRate(cur) {
+  // 返回 1 cur = ? USD
+  const rates = { USD: 1, EUR: 1/0.92, AUD: 1/1.53, CAD: 1/1.36 };
+  return rates[cur] || 1;
+}
 
 // ============ 欧洲可邮寄国家白名单 ============
 const EU_WHITELIST = [
@@ -3107,21 +3193,27 @@ function saveShippingTemplate() {
 
 // ============ 订单自动报价 & 自动算运费 ============
 function recalcOrderTotal() {
-  let goodsTotal = 0;
+  let goodsTotalUSD = 0;
   const container = document.getElementById('order-items-container');
   if (!container) return;
   container.querySelectorAll('div[id^="item-row-"]').forEach(row => {
     const idx = row.id.replace('item-row-', '');
     const qty  = parseFloat(document.getElementById(`item-qty-${idx}`)?.value) || 0;
     const price = parseFloat(document.getElementById(`item-price-${idx}`)?.value) || 0;
-    goodsTotal += qty * price;
+    goodsTotalUSD += qty * price;
   });
-  const gEl = document.getElementById('order-goods-total');
-  if (gEl) gEl.textContent = `USD ${goodsTotal.toFixed(2)}`;
-  const sFee = parseFloat(document.getElementById('order-shipping-fee')?.value) || 0;
-  const subtotal = goodsTotal + sFee;
 
-  // 付款方式手续费
+  const sym = curSym(_settlementCurrency);
+  const goodsTotalCur = goodsTotalUSD / _orderExchangeRate; // 转为结算货币
+  const gEl = document.getElementById('order-goods-total');
+  if (gEl) gEl.textContent = `${sym}${goodsTotalCur.toFixed(2)}`;
+
+  // 运费：用户填的是结算货币金额，需转为 USD 计算手续费
+  const sFeeCur = parseFloat(document.getElementById('order-shipping-fee')?.value) || 0;
+  const sFeeUSD = sFeeCur * _orderExchangeRate;
+  const subtotalUSD = goodsTotalUSD + sFeeUSD;
+
+  // 付款方式手续费（USD 计算，结果也转回结算货币）
   const method = document.getElementById('order-payment-method')?.value || '';
   const FEE_RATES = {
     bank_transfer: { rate: 0.025, fixed: 0 },
@@ -3130,22 +3222,27 @@ function recalcOrderTotal() {
     crypto:        { rate: 0.025, fixed: 0 }
   };
   const feeConfig = FEE_RATES[method];
-  const handlingFee = feeConfig ? (subtotal * feeConfig.rate + feeConfig.fixed) : 0;
+  const handlingFeeUSD = feeConfig ? (subtotalUSD * feeConfig.rate + feeConfig.fixed) : 0;
+  const handlingFeeCur = handlingFeeUSD / _orderExchangeRate;
   const hEl = document.getElementById('order-handling-fee');
   if (hEl) {
     if (feeConfig) {
-      hEl.textContent = `$${handlingFee.toFixed(2)}${feeConfig.fixed > 0 ? ` (含$${feeConfig.fixed}固定费)` : ''}`;
+      hEl.textContent = `${sym}${handlingFeeCur.toFixed(2)}${feeConfig.fixed > 0 ? ` (含$${feeConfig.fixed}固定费)` : ''}`;
       hEl.classList.remove('text-gray-400');
       hEl.classList.add('text-red-600');
     } else {
-      hEl.textContent = method ? '$0.00' : '请先选择付款方式';
+      hEl.textContent = method ? `${sym}0.00` : '请先选择付款方式';
       hEl.classList.remove('text-red-600');
       hEl.classList.add('text-gray-400');
     }
   }
-  const grandTotal = subtotal + handlingFee;
+  const grandTotalUSD = subtotalUSD + handlingFeeUSD;
+  const grandTotalCur = grandTotalUSD / _orderExchangeRate;
+  const totalCNY = grandTotalUSD * _orderUsdToCny;
   const tEl = document.getElementById('order-grand-total');
-  if (tEl) tEl.textContent = `USD ${grandTotal.toFixed(2)}`;
+  if (tEl) tEl.textContent = `${_settlementCurrency} ${grandTotalCur.toFixed(2)}`;
+  const cEl = document.getElementById('order-cny-total');
+  if (cEl) cEl.textContent = `= ¥${totalCNY.toFixed(2)} CNY`;
 }
 
 async function autoQuoteOrder() {
@@ -3346,25 +3443,34 @@ async function autoCalcShipping() {
   if (!tpl && candidates.length > 0) { tpl = candidates[0]; console.log('[autoCalc] 无规格要求，取第一个候选'); }
   if (!tpl) { showToast(`未找到"${country}"的运费模板（已有模板国家：` + shippingTemplates.map(t=>t.country).join('、') + `）`, 'warning'); return; }
 
-  // 第六步：计费（每箱单独算首重+续重）
+  // 第六步：计费（每箱单独算首重+续重），原始币种为模板币种
+  const tplCurrency = tpl.currency || 'USD';
   const firstW = tpl.first_unit_qty ?? tpl.first_weight ?? 0;
   const addW  = tpl.add_unit_qty ?? tpl.add_weight ?? 0;
   const firstP = tpl.first_price ?? 0;
   const addP  = tpl.add_price ?? 0;
-  let totalFreight = 0;
+  let totalFreightTpl = 0; // 模板币种的运费
   boxWeights.forEach(bw => {
     if (bw <= firstW) {
-      totalFreight += firstP;
+      totalFreightTpl += firstP;
     } else {
       const extraUnits = Math.ceil((bw - firstW) / addW);
-      totalFreight += firstP + extraUnits * addP;
+      totalFreightTpl += firstP + extraUnits * addP;
     }
   });
 
-  document.getElementById('order-shipping-fee').value = totalFreight.toFixed(2);
+  // 汇率换算：模板币种 → USD → 结算货币
+  const rates = await getExchangeRates();
+  const tplToUsd = tplCurrency === 'USD' ? 1 : (1 / (rates[tplCurrency] || 1));
+  const totalFreightUSD = totalFreightTpl * tplToUsd;
+  const totalFreightCur = totalFreightUSD / _orderExchangeRate;
+
+  document.getElementById('order-shipping-fee').value = totalFreightCur.toFixed(2);
   recalcOrderTotal();
-  const sym = curSym(tpl.currency || 'USD');
-  let msg = `运费估算：${sym}${totalFreight.toFixed(2)}（${tpl.country}·${tpl.channel}`;
+  const tplSym = curSym(tplCurrency);
+  const curSymStr = curSym(_settlementCurrency);
+  let msg = `运费估算：${tplSym}${totalFreightTpl.toFixed(2)}(${tplCurrency}) → ${curSymStr}${totalFreightCur.toFixed(2)}(${_settlementCurrency})`;
+  msg += `（${tpl.country}·${tpl.channel}`;
   if (tpl.spec_type) msg += `·${tpl.spec_type}`;
   if (tpl.delivery_time) msg += `·${tpl.delivery_time}`;
   msg += `）`;
