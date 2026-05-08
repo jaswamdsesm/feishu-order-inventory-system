@@ -291,15 +291,8 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
                 </div>
               </div>
               <div>
-                <label class="block text-xs text-gray-500 mb-1">外包装（统一）*</label>
-                <select id="ship-packaging" onchange="onShipPackagingChange(this.value)" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm">
-                  <option value="">请选择外包装</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs text-gray-500 mb-1">每箱容量（盒/箱）</label>
-                <input id="ship-box-capacity" type="text" readonly class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-500"/>
-                <p class="text-xs text-gray-400 mt-1">选择外包装后自动填入</p>
+                <label class="block text-xs text-gray-500 mb-1">外包装（自动选择）</label>
+                <div id="ship-auto-pkg" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-500 min-h-[42px] flex items-center">添加产品后自动匹配</div>
               </div>
               <button onclick="calcShipping()" class="w-full btn-touch py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">核算运费</button>
             </div>
