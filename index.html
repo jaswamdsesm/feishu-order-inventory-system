@@ -478,6 +478,17 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
         <input id="order-shipping-fee" type="number" step="0.01" placeholder="0.00" oninput="recalcOrderTotal()"
           class="w-32 text-right px-2 py-1 rounded border border-orange-200 text-sm text-orange-700 font-bold bg-white focus:outline-none focus:ring-1 focus:ring-orange-400"/>
       </div>
+      <div class="flex justify-between items-center">
+        <span class="text-xs text-gray-600">付款方式</span>
+        <select id="order-payment-method" onchange="recalcOrderTotal()" class="px-2 py-1 rounded border border-gray-200 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+          <option value="">请选择</option>
+          <option value="bank_transfer">🏦 银行转账 (2.5%)</option>
+          <option value="paypal">🅿️ PayPal (4.4%+$0.30)</option>
+          <option value="wise">💚 Wise (2.5%)</option>
+          <option value="crypto">🔗 加密货币 (2.5%)</option>
+        </select>
+      </div>
+      <div class="flex justify-between items-center"><span class="text-xs text-gray-600">手续费</span><span id="order-handling-fee" class="text-sm font-bold text-red-600">$0.00</span></div>
       <div class="flex justify-between items-center pt-2 border-t border-blue-100"><span class="text-sm font-bold text-gray-700">订单总金额</span><span id="order-grand-total" class="text-lg font-bold text-green-700">- USD</span></div>
     </div>
   </div>
