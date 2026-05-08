@@ -380,6 +380,9 @@ async function init() {
       }
       hideLoading();
       applyRole();
+      // 预加载运费模板和产品重量数据（避免首次新增订单时运费识别失败）
+      try { loadShippingTemplates(); } catch (e) { console.warn('预加载运费模板失败', e); }
+      try { await loadWeightProducts(); } catch (e) { console.warn('预加载产品重量失败', e); }
       switchPage('dashboard');
       loadProfiles();  // 后台加载，不阻塞渲染
       return;
