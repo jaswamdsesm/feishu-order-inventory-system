@@ -1038,7 +1038,7 @@ async function saveOrder() {
   const country = (document.getElementById('order-customer-country-input')?.value || document.getElementById('order-customer-country')?.value || '').trim();
   const ownerName = document.getElementById('order-owner-select')?.value || '';
   const remark = document.getElementById('order-remark').value.trim();
-  if (!name || !addr) { showToast('请填写客户姓名和收货地址', 'warning'); return; }
+  if (!name || !phone || !addr) { showToast('请填写客户姓名、联系电话和收货地址', 'warning'); return; }
   const itemRows = document.querySelectorAll('#order-items-container > div');
   const items = [];
   for (let i = 0; i < itemRows.length; i++) {
