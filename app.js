@@ -2901,15 +2901,16 @@ function saveWeightProductsToStorage() {
 function syncWeightProductsToCloud() {
   if (weightProducts.length === 0) { showToast('暂无数据可同步', 'warning'); return; }
   showToast('同步中...', 'info');
-  const payload = JSON.stringify(weightProducts);
-  console.log('syncWeightProducts payload:', payload);
-  localStorage.setItem(WEIGHT_PRODUCT_KEY, payload);
-  sb.rpc('sync_weight_products', { p_data: payload }).then(res => {
-    console.log('syncWeightProducts result:', res);
-    showToast('产品重量库已同步到云端 ✓', 'success');
-  }).catch(err => {
-    console.error('syncWeightProducts error:', err);
-    showToast('同步失败: ' + (err.message || JSON.stringify(err)), 'error');
+  const rows = weightProducts.map(p => ({
+    id: p.id, name: p.name, type: p.type || 'product',
+    net_weight: p.net_weight || 0, gross_weight: p.gross_weight || 0, capacity: p.capacity || 0
+  }));
+  sb.from('weight_products').upsert(rows, { onConflict: 'id' }).then(({ data, error }) => {
+    if (error) {
+      showToast('同步失败: ' + error.message, 'error');
+    } else {
+      showToast('产品重量库已同步到云端 ✓', 'success');
+    }
   });
 }
 
@@ -3186,15 +3187,18 @@ function saveShippingTemplatesToStorage() {
 function syncShippingTemplatesToCloud() {
   if (shippingTemplates.length === 0) { showToast('暂无数据可同步', 'warning'); return; }
   showToast('同步中...', 'info');
-  const payload = JSON.stringify(shippingTemplates);
-  console.log('syncShippingTemplates payload:', payload);
-  localStorage.setItem(SHIP_TPL_KEY, payload);
-  sb.rpc('sync_shipping_templates', { p_data: payload }).then(res => {
-    console.log('syncShippingTemplates result:', res);
-    showToast('运费模板已同步到云端 ✓', 'success');
-  }).catch(err => {
-    console.error('syncShippingTemplates error:', err);
-    showToast('同步失败: ' + (err.message || JSON.stringify(err)), 'error');
+  const rows = shippingTemplates.map(t => ({
+    id: t.id, country: t.country, channel: t.channel, currency: t.currency,
+    spec_type: t.spec_type || '', delivery_time: t.delivery_time || '',
+    first_weight: t.first_weight || 0, first_price: t.first_price || 0,
+    add_weight: t.add_weight || 0, add_price: t.add_price || 0
+  }));
+  sb.from('shipping_templates').upsert(rows, { onConflict: 'id' }).then(({ data, error }) => {
+    if (error) {
+      showToast('同步失败: ' + error.message, 'error');
+    } else {
+      showToast('运费模板已同步到云端 ✓', 'success');
+    }
   });
 }
 
