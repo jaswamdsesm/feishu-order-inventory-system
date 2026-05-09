@@ -2898,6 +2898,18 @@ function saveWeightProductsToStorage() {
   });
 }
 
+function syncWeightProductsToCloud() {
+  if (weightProducts.length === 0) { showToast('暂无数据可同步', 'warning'); return; }
+  showToast('同步中...', 'info');
+  localStorage.setItem(WEIGHT_PRODUCT_KEY, JSON.stringify(weightProducts));
+  sb.rpc('sync_weight_products', { p_data: JSON.stringify(weightProducts) }).then(() => {
+    showToast('产品重量库已同步到云端 ✓', 'success');
+  }).catch(err => {
+    console.warn('同步失败:', err);
+    showToast('同步失败，请重试', 'error');
+  });
+}
+
 function renderWeightProducts() {
   const tbody = document.getElementById('weight-product-body');
   const empty = document.getElementById('weight-product-empty');
@@ -3165,6 +3177,18 @@ function saveShippingTemplatesToStorage() {
     console.log('运费模板已同步到云端');
   }).catch(err => {
     console.warn('运费模板云端同步失败:', err);
+  });
+}
+
+function syncShippingTemplatesToCloud() {
+  if (shippingTemplates.length === 0) { showToast('暂无数据可同步', 'warning'); return; }
+  showToast('同步中...', 'info');
+  localStorage.setItem(SHIP_TPL_KEY, JSON.stringify(shippingTemplates));
+  sb.rpc('sync_shipping_templates', { p_data: JSON.stringify(shippingTemplates) }).then(() => {
+    showToast('运费模板已同步到云端 ✓', 'success');
+  }).catch(err => {
+    console.warn('同步失败:', err);
+    showToast('同步失败，请重试', 'error');
   });
 }
 
