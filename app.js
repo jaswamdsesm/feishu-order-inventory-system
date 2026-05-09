@@ -2758,6 +2758,8 @@ function downloadBlob(blob, filename) {
 
 // ============ 运费助手 ============
 let shippingTemplates = [];
+let shippingTemplatesLoaded = false;
+let weightProductsLoaded = false;
 const SHIP_TPL_KEY = 'oi_shipping_templates';
 const CURRENCY_SYMBOLS = { USD: '$', AUD: 'A$', CNY: '¥', EUR: '€', GBP: '£' };
 const PAYMENT_LABELS = { bank_transfer: '🏦 银行转账', paypal: '🅿️ PayPal', wise: '💚 Wise', crypto: '🔗 加密货币' };
@@ -2848,9 +2850,11 @@ function hideCountryDropdownDelay() {
 
 // ============ 产品重量库
 let weightProducts = [];
+let weightProductsLoaded = false;
 const WEIGHT_PRODUCT_KEY = 'oi_weight_products';
 
 function loadWeightProducts() {
+  if (weightProductsLoaded) return Promise.resolve();
   return sb.from('weight_products').select('*').order('type').then(({ data, error }) => {
     if (!error && data && data.length > 0) {
       weightProducts = data.map(p => ({
@@ -2861,7 +2865,7 @@ function loadWeightProducts() {
       }));
       localStorage.setItem(WEIGHT_PRODUCT_KEY, JSON.stringify(weightProducts));
     } else {
-      // 回退到 localStorage，如果有数据则自动同步到云端
+      // 回退到 localStorage
       try {
         const raw = localStorage.getItem(WEIGHT_PRODUCT_KEY);
         weightProducts = raw ? JSON.parse(raw) : [];
@@ -2876,15 +2880,21 @@ function loadWeightProducts() {
         // 云端为空但本地有数据，自动上传
         if (weightProducts.length > 0) {
           console.log('产品重量库云端为空，从本地同步上传');
-          sb.rpc('sync_weight_products', { p_data: JSON.stringify(weightProducts) }).catch(e => console.warn('产品重量库自动上传失败:', e));
+          sb.from('weight_products').upsert(weightProducts.map(p => ({
+            id: p.id, name: p.name, type: p.type || 'product',
+            net_weight: p.net_weight || 0, gross_weight: p.gross_weight || 0,
+            capacity: p.capacity || 0
+          })), { onConflict: 'id' }).catch(e => console.warn('产品重量库自动上传失败:', e));
         }
       } catch (e) { weightProducts = []; }
     }
+    weightProductsLoaded = true;
   }).catch(() => {
     try {
       const raw = localStorage.getItem(WEIGHT_PRODUCT_KEY);
       weightProducts = raw ? JSON.parse(raw) : [];
     } catch (e) { weightProducts = []; }
+    weightProductsLoaded = true;
   });
 }
 
@@ -3134,6 +3144,7 @@ function saveWeightProduct() {
 }
 
 function loadShippingTemplates() {
+  if (shippingTemplatesLoaded) return Promise.resolve();
   return sb.from('shipping_templates').select('*').order('country').then(({ data, error }) => {
     if (!error && data && data.length > 0) {
       shippingTemplates = data.map(t => ({
@@ -3146,7 +3157,7 @@ function loadShippingTemplates() {
       }));
       localStorage.setItem(SHIP_TPL_KEY, JSON.stringify(shippingTemplates));
     } else {
-      // 回退到 localStorage，如果有数据则自动同步到云端
+      // 回退到 localStorage
       try {
         const raw = localStorage.getItem(SHIP_TPL_KEY);
         shippingTemplates = raw ? JSON.parse(raw) : [];
@@ -3162,16 +3173,24 @@ function loadShippingTemplates() {
         // 云端为空但本地有数据，自动上传
         if (shippingTemplates.length > 0) {
           console.log('运费模板云端为空，从本地同步上传');
-          sb.rpc('sync_shipping_templates', { p_data: JSON.stringify(shippingTemplates) }).catch(e => console.warn('运费模板自动上传失败:', e));
+          sb.from('shipping_templates').upsert(shippingTemplates.map(t => ({
+            id: t.id, country: t.country, channel: t.channel, currency: t.currency,
+            spec_type: t.spec_type || '', delivery_time: t.delivery_time || '',
+            first_weight: t.first_weight || 0, first_price: t.first_price || 0,
+            add_weight: t.add_weight || 0, add_price: t.add_price || 0
+          })), { onConflict: 'id' }).catch(e => console.warn('运费模板自动上传失败:', e));
         }
       } catch (e) { shippingTemplates = []; }
     }
+    shippingTemplatesLoaded = true;
   }).catch(() => {
     try {
       const raw = localStorage.getItem(SHIP_TPL_KEY);
       shippingTemplates = raw ? JSON.parse(raw) : [];
     } catch (e) { shippingTemplates = []; }
+    shippingTemplatesLoaded = true;
   });
+}
 }
 
 function saveShippingTemplatesToStorage() {
