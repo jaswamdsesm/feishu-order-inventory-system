@@ -87,15 +87,35 @@ async function getExchangeRates() {
 
 // 更新结算货币汇率显示
 async function onSettlementCurrencyChange() {
-  _settlementCurrency = document.getElementById('order-settlement-currency')?.value || 'USD';
+  const newCurrency = document.getElementById('order-settlement-currency')?.value || 'USD';
   const rates = await getExchangeRates();
   _orderUsdToCny = rates.CNY || 7.25;
-  // 1 结算货币 = ? USD：USD→rates 是 1USD=?cur，所以 1cur = 1/rates[cur]
-  if (_settlementCurrency === 'USD') {
-    _orderExchangeRate = 1;
+
+  // 旧汇率（切换前）
+  const oldExchangeRate = _orderExchangeRate;
+
+  // 计算新汇率
+  let newExchangeRate;
+  if (newCurrency === 'USD') {
+    newExchangeRate = 1;
   } else {
-    _orderExchangeRate = 1 / (rates[_settlementCurrency] || 1);
+    newExchangeRate = 1 / (rates[newCurrency] || 1);
   }
+
+  // 把运费从旧货币换算成新货币：先→USD，再→新货币
+  const shippingInput = document.getElementById('order-shipping-fee');
+  if (shippingInput) {
+    const oldShipping = parseFloat(shippingInput.value) || 0;
+    if (oldShipping > 0 && oldExchangeRate > 0 && newExchangeRate > 0) {
+      const shippingUSD = oldShipping * oldExchangeRate;
+      const newShipping = shippingUSD / newExchangeRate;
+      shippingInput.value = newShipping.toFixed(2);
+    }
+  }
+
+  _settlementCurrency = newCurrency;
+  _orderExchangeRate = newExchangeRate;
+
   const rateEl = document.getElementById('order-exchange-rate');
   if (rateEl) {
     const cnyRate = _orderUsdToCny * _orderExchangeRate;
