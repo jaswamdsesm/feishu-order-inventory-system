@@ -2779,7 +2779,6 @@ function downloadBlob(blob, filename) {
 // ============ 运费助手 ============
 let shippingTemplates = [];
 let shippingTemplatesLoaded = false;
-let weightProductsLoaded = false;
 const SHIP_TPL_KEY = 'oi_shipping_templates';
 const CURRENCY_SYMBOLS = { USD: '$', AUD: 'A$', CNY: '¥', EUR: '€', GBP: '£' };
 const PAYMENT_LABELS = { bank_transfer: '🏦 银行转账', paypal: '🅿️ PayPal', wise: '💚 Wise', crypto: '🔗 加密货币' };
@@ -3210,7 +3209,6 @@ function loadShippingTemplates() {
     } catch (e) { shippingTemplates = []; }
     shippingTemplatesLoaded = true;
   });
-}
 }
 
 function saveShippingTemplatesToStorage() {
