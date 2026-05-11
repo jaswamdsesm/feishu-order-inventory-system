@@ -1263,7 +1263,7 @@ async function saveOrder() {
   const btn = document.getElementById('btn-save-order'); btn.disabled = true; btn.textContent = '保存中…';
   try {
     const orderDate = document.getElementById('order-date')?.value || '';
-    const orderNo = isEdit ? null : await genOrderNo(orderDate);
+    const orderNo = isEdit ? (allOrders.find(x => x.id === editingOrderId)?.order_no || '') : await genOrderNo(orderDate);
     const status = isEdit ? document.getElementById('order-status').value : 'pending';
     const trackingNo = document.getElementById('order-tracking-no')?.value.trim() || null;
     const shippingFee = String(parseFloat(document.getElementById('order-shipping-fee')?.value) || 0);
