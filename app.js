@@ -1048,24 +1048,14 @@ function updateOrdersSummary(filtered) {
     const rate = o.exchange_rate || 1;
     const shippingCur = parseFloat(o.shipping_fee) || 0;
     const shippingUSD = shippingCur * rate;
-    if (o.total_cny > 0) {
-      // 用订单存储的 CNY 总额（更准确）
-      totalCNY += o.total_cny;
-      // 近似拆分货物和运费的 CNY
-      const grandUSD = goodsUSD + shippingUSD;
-      if (grandUSD > 0) {
-        totalGoodsCNY += o.total_cny * (goodsUSD / grandUSD);
-        totalShipCNY += o.total_cny * (shippingUSD / grandUSD);
-      } else {
-        totalGoodsCNY += o.total_cny;
-      }
-    } else {
-      const goodsCNY = goodsUSD * 7.25;
-      const shipCNY = shippingUSD * 7.25;
-      totalGoodsCNY += goodsCNY;
-      totalShipCNY += shipCNY;
-      totalCNY += goodsCNY + shipCNY;
-    }
+    const grandUSD = goodsUSD + shippingUSD;
+    let usdToCny = 7.25;
+    if (o.total_cny > 0 && grandUSD > 0) { usdToCny = o.total_cny / grandUSD; }
+    const goodsCNY = goodsUSD * usdToCny;
+    const shipCNY = shippingUSD * usdToCny;
+    totalGoodsCNY += goodsCNY;
+    totalShipCNY += shipCNY;
+    totalCNY += goodsCNY + shipCNY;
   });
   goodsEl.textContent = '¥' + totalGoodsCNY.toFixed(2);
   shipEl.textContent = '¥' + totalShipCNY.toFixed(2);
