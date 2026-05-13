@@ -1164,13 +1164,18 @@ async function openOrderModal(id) {
       document.getElementById('order-tracking-row').classList.toggle('hidden', o.status !== 'shipped');
       document.getElementById('order-owner-select').value = o.owner_name || '';
       let items = allOrderItems.filter(i => i.order_id === id);
-      // 如果 items 为空（可能数据未加载），重新加载
+      // 如果 order_items 表没有数据，回退到 orders.items JSONB 字段
+      if (items.length === 0 && o.items && Array.isArray(o.items)) {
+        items = o.items;
+      }
       if (items.length === 0) {
         await loadOrders();
         items = allOrderItems.filter(i => i.order_id === id);
+        if (items.length === 0 && o.items && Array.isArray(o.items)) {
+          items = o.items;
+        }
       }
       if (items.length === 0) {
-        // 仍然没有订单项，用 product_summary 兜底显示一行提示
         showToast('该订单产品明细未加载，请刷新页面重试', 'warning');
       } else {
         items.forEach(i => addOrderItemRow(i));
