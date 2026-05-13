@@ -3699,7 +3699,7 @@ async function autoCalcShipping() {
     targetSpec = (totalWeight >= 22000 && totalWeight <= 50000) ? '大件' : '小件';
   }
 
-  // 第五步：匹配运费模板（国家匹配 + 规格类型优先）
+  // 第五步：匹配运费模板（国家匹配 + 大小件优先）
   console.log('[autoCalc] 订单国家:', JSON.stringify(country));
   console.log('[autoCalc] 所有模板:', shippingTemplates.map(t => t.country + '|' + (t.spec_type||'无')));
   let candidates = shippingTemplates.filter(t => {
@@ -3708,13 +3708,45 @@ async function autoCalcShipping() {
     if (match) console.log('[autoCalc] 候选模板:', t.country, t.spec_type, t.channel);
     return match;
   });
+  // 判断模板是"大件"还是"小件"（优先看 spec_type，其次看 country 名称）
+  function isLargeTemplate(t) {
+    if (t.spec_type && t.spec_type.includes('大件')) return true;
+    if (t.country && (t.country.includes('大件') || t.country.includes('大货'))) return true;
+    return false;
+  }
+  function isSmallTemplate(t) {
+    if (t.spec_type && t.spec_type.includes('小件')) return true;
+    if (t.country && (t.country.includes('小件') || t.country.includes('小货'))) return true;
+    return false;
+  }
+
+  // 排除明显不符合规格的模板（澳洲小件模板的首重是1000g，如果总重超22kg就不该用小件）
+  function filterByWeight(candidates, boxWeights) {
+    return candidates.filter(t => {
+      const firstW = t.first_unit_qty ?? t.first_weight ?? 0;
+      // 如果模板首重大于单箱重量，跳过（大件模板首重22kg，1小箱不可能用）
+      const maxBoxWeight = Math.max(...boxWeights);
+      if (firstW > 0 && firstW > maxBoxWeight && isLargeTemplate(t) && !isSmallTemplate(t)) {
+        return false;
+      }
+      return true;
+    });
+  }
+
   console.log('[autoCalc] 候选数:', candidates.length, 'targetSpec:', targetSpec);
   let tpl = null;
-  if (targetSpec) {
-    tpl = candidates.find(t => t.spec_type === targetSpec);
-    if (!tpl) { tpl = candidates.find(t => !t.spec_type || t.spec_type === ''); console.log('[autoCalc] 未找到规格匹配，降级取无规格模板'); }
+  // 先根据重量过滤掉不符合的模板
+  const weightFiltered = filterByWeight(candidates, boxWeights);
+  if (targetSpec === '大件') {
+    tpl = weightFiltered.find(t => isLargeTemplate(t) && !isSmallTemplate(t));
+    if (!tpl) tpl = weightFiltered.find(t => isLargeTemplate(t));
+    if (!tpl) { tpl = weightFiltered.find(t => !isLargeTemplate(t) && !isSmallTemplate(t)); }
+  } else if (targetSpec === '小件') {
+    tpl = weightFiltered.find(t => isSmallTemplate(t) && !isLargeTemplate(t));
+    if (!tpl) tpl = weightFiltered.find(t => isSmallTemplate(t));
+    if (!tpl) { tpl = weightFiltered.find(t => !isLargeTemplate(t) && !isSmallTemplate(t)); }
   }
-  if (!tpl && candidates.length > 0) { tpl = candidates[0]; console.log('[autoCalc] 无规格要求，取第一个候选'); }
+  if (!tpl && weightFiltered.length > 0) { tpl = weightFiltered[0]; }
   if (!tpl) { showToast(`未找到"${country}"的运费模板（已有模板国家：` + shippingTemplates.map(t=>t.country).join('、') + `）`, 'warning'); return; }
 
   // 第六步：计费（每箱单独算首重+续重），原始币种为模板币种
