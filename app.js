@@ -1897,7 +1897,7 @@ const QUOTE_PRODUCTS = [
   { name:'5-Amino-1MQ', code:'5AM', spec:'5mg*10vials', price:68 },
   { name:'5-Amino-1MQ', code:'10AM', spec:'10mg*10vials', price:100 },
   { name:'5-Amino-1MQ', code:'50AM', spec:'50mg*10vials', price:230 },
-  { name:'SLU-PP-322', code:'322', spec:'5mg*10vials', price:94 },
+  { name:'SLU-PP-332', code:'332', spec:'5mg*10vials', price:94 },
   { name:'Adipotide', code:'AP5', spec:'5mg*10vials', price:158 },
   { name:'GHK-CU', code:'CU50', spec:'50mg*10vials', price:19 },
   { name:'GHK-CU', code:'CU100', spec:'100mg*10vials', price:27 },
