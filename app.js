@@ -704,13 +704,6 @@ async function loadDashboardData() {
   const today = new Date().toISOString().slice(0, 10);
   const todayOrders = allOrders.filter(o => (o.created_at || '').startsWith(today));
   document.getElementById('dash-today-orders').textContent = todayOrders.length;
-  const thisMonth = new Date().toISOString().slice(0, 7);
-  let monthSales = 0;
-  // 只统计自己可见的订单（allOrders 已被 loadOrders 按权限过滤）
-  allOrders.filter(o => (o.created_at || '').startsWith(thisMonth)).forEach(o => {
-    allOrderItems.filter(i => i.order_id === o.id).forEach(i => { monthSales += (i.unit_price || 0) * i.quantity; });
-  });
-  document.getElementById('dash-month-sales').textContent = monthSales.toFixed(2) + '元';
   const al = document.getElementById('dash-alert-list');
   if (alerts.length === 0) al.innerHTML = '<p class="text-sm text-gray-400">暂无预警产品 🎉</p>';
   else al.innerHTML = alerts.map(p => `<div class="flex items-center justify-between py-2 border-b border-gray-50"><span class="text-sm font-medium text-red-600">${esc(p.name)}</span><span class="text-xs text-red-500">库存 ${p.current_stock} ${p.unit || '个'}（阈值 ${p.min_stock_alert}）</span></div>`).join('');
@@ -974,7 +967,7 @@ function renderOrders() {
   });
   const phoneHidden = isPhoneHidden();
   const isAdmin = ['super_admin', 'admin'].includes(currentRole);
-  if (filtered.length === 0) { document.getElementById('orders-list').innerHTML = ''; document.getElementById('orders-empty').classList.remove('hidden'); return; }
+  if (filtered.length === 0) { document.getElementById('orders-list').innerHTML = ''; document.getElementById('orders-empty').classList.remove('hidden'); updateOrdersSummary([]); return; }
   document.getElementById('orders-empty').classList.add('hidden');
   document.getElementById('orders-list').innerHTML = filtered.map(o => {
     const items = allOrderItems.filter(i => i.order_id === o.id);
@@ -1038,6 +1031,51 @@ function renderOrders() {
       </div>
     </div>`;
   }).join('');
+  updateOrdersSummary(filtered);
+}
+
+function updateOrdersSummary(filtered) {
+  const countEl = document.getElementById('summary-count');
+  const goodsEl = document.getElementById('summary-goods');
+  const shipEl = document.getElementById('summary-shipping');
+  const cnyEl = document.getElementById('summary-cny');
+  if (!countEl) return;
+  countEl.textContent = filtered.length;
+  if (filtered.length === 0) {
+    goodsEl.textContent = '¥0.00';
+    shipEl.textContent = '¥0.00';
+    cnyEl.textContent = '¥0.00';
+    return;
+  }
+  let totalGoodsCNY = 0, totalShipCNY = 0, totalCNY = 0;
+  filtered.forEach(o => {
+    const items = allOrderItems.filter(i => i.order_id === o.id);
+    const goodsUSD = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
+    const rate = o.exchange_rate || 1;
+    const shippingCur = parseFloat(o.shipping_fee) || 0;
+    const shippingUSD = shippingCur * rate;
+    if (o.total_cny > 0) {
+      // 用订单存储的 CNY 总额（更准确）
+      totalCNY += o.total_cny;
+      // 近似拆分货物和运费的 CNY
+      const grandUSD = goodsUSD + shippingUSD;
+      if (grandUSD > 0) {
+        totalGoodsCNY += o.total_cny * (goodsUSD / grandUSD);
+        totalShipCNY += o.total_cny * (shippingUSD / grandUSD);
+      } else {
+        totalGoodsCNY += o.total_cny;
+      }
+    } else {
+      const goodsCNY = goodsUSD * 7.25;
+      const shipCNY = shippingUSD * 7.25;
+      totalGoodsCNY += goodsCNY;
+      totalShipCNY += shipCNY;
+      totalCNY += goodsCNY + shipCNY;
+    }
+  });
+  goodsEl.textContent = '¥' + totalGoodsCNY.toFixed(2);
+  shipEl.textContent = '¥' + totalShipCNY.toFixed(2);
+  cnyEl.textContent = '¥' + totalCNY.toFixed(2);
 }
 
 function statusText(s) { return { pending: '待处理', shipped: '已发货', completed: '已完成', cancelled: '已取消' }[s] || s; }
