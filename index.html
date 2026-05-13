@@ -229,21 +229,13 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
       <div id="orders-list" class="space-y-3"></div>
       <div id="orders-empty" class="hidden py-12 text-center text-sm text-gray-400">暂无订单</div>
       <div id="orders-summary" class="mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="flex items-center gap-4 text-sm">
-            <span class="text-gray-500">筛选结果：<span id="summary-count" class="font-bold text-gray-700">0</span> 单</span>
-            <span class="text-gray-300">|</span>
-            <span class="text-gray-500">货物：<span id="summary-goods" class="font-bold text-blue-700">¥0.00</span></span>
-            <span class="text-gray-300">|</span>
-            <span class="text-gray-500">手续费：<span id="summary-handling" class="font-bold text-red-500">¥0.00</span></span>
-          </div>
-          <div class="flex items-center gap-4 text-sm">
-            <span class="text-gray-500">运费：<span id="summary-shipping" class="font-bold text-orange-600">¥0.00</span></span>
-            <span class="text-gray-300">|</span>
-            <span class="text-gray-500">总计：<span id="summary-cny" class="text-lg font-bold text-red-600">¥0.00</span></span>
-            <span class="text-gray-300">|</span>
-            <span class="text-gray-500">毛利：<span id="summary-profit" class="text-lg font-bold text-green-600">¥0.00</span></span>
-          </div>
+        <div class="flex items-center gap-6 text-sm overflow-x-auto">
+          <span class="whitespace-nowrap text-gray-500">筛选结果：<span id="summary-count" class="font-bold text-gray-700">0</span> 单</span>
+          <span class="whitespace-nowrap text-gray-500">货物：<span id="summary-goods" class="font-bold text-blue-700 w-24 inline-block">¥0.00</span></span>
+          <span class="whitespace-nowrap text-gray-500">运费：<span id="summary-shipping" class="font-bold text-orange-600 w-24 inline-block">¥0.00</span></span>
+          <span class="whitespace-nowrap text-gray-500">手续费：<span id="summary-handling" class="font-bold text-red-500 w-24 inline-block">¥0.00</span></span>
+          <span class="whitespace-nowrap text-gray-500">总计：<span id="summary-cny" class="font-bold text-red-600 w-28 inline-block">¥0.00</span></span>
+          <span class="whitespace-nowrap text-gray-500">毛利：<span id="summary-profit" class="font-bold text-green-600 w-28 inline-block">¥0.00</span></span>
         </div>
       </div>
     </div>
