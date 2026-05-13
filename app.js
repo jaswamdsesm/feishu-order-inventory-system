@@ -990,12 +990,12 @@ function renderOrders() {
     const canEdit = isAdmin && !['shipped','completed'].includes(o.status);
     const btnHtml = canEdit ? `<button onclick="openOrderModal('${o.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteOrder('${o.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
     const deliveredBtn = (o.status === 'shipped' && isAdmin) ? `<button onclick="markDelivered('${o.id}')" class="text-xs text-blue-600 hover:underline mr-2">📦 已送达</button>` : '';
-    // 直接读数据库字段，不再反推
-    const goodsCNYStr   = (o.goods_cny > 0) ? ` = ¥${parseFloat(o.goods_cny).toFixed(2)}` : '';
-    const shipCNYStr    = (o.shipping_cny > 0) ? ` = ¥${parseFloat(o.shipping_cny).toFixed(2)}` : '';
-    const totalCNYStr   = (o.total_cny > 0) ? ` = ¥${parseFloat(o.total_cny).toFixed(2)}` : '';
+    // 直接读数据库字段，不再反推；字段存在且不为 null 就显示（允许显示 0.00）
+    const goodsCNYStr   = (o.goods_cny != null && o.goods_cny !== '') ? ` = ¥${parseFloat(o.goods_cny).toFixed(2)}` : '';
+    const shipCNYStr    = (o.shipping_cny != null && o.shipping_cny !== '') ? ` = ¥${parseFloat(o.shipping_cny).toFixed(2)}` : '';
+    const totalCNYStr   = (o.total_cny != null && o.total_cny !== '') ? ` = ¥${parseFloat(o.total_cny).toFixed(2)}` : '';
     const handlingStr    = o.handling_fee > 0 ? `${sym}${parseFloat(o.handling_fee).toFixed(2)}` : '';
-    const handlingCNYStr = (o.handling_cny > 0) ? ` = ¥${parseFloat(o.handling_cny).toFixed(2)}` : '';
+    const handlingCNYStr = (o.handling_cny != null && o.handling_cny !== '') ? ` = ¥${parseFloat(o.handling_cny).toFixed(2)}` : '';
     return `<div class="order-card border ${sc[o.status] || 'border-gray-200'} rounded-xl p-4 bg-white shadow-sm">
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
