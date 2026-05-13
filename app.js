@@ -990,10 +990,22 @@ function renderOrders() {
     const canEdit = isAdmin && !['shipped','completed'].includes(o.status);
     const btnHtml = canEdit ? `<button onclick="openOrderModal('${o.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteOrder('${o.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
     const deliveredBtn = (o.status === 'shipped' && isAdmin) ? `<button onclick="markDelivered('${o.id}')" class="text-xs text-blue-600 hover:underline mr-2">📦 已送达</button>` : '';
-    const cnyHtml = o.total_cny > 0 ? `<span class="text-xs text-gray-400">≈ ¥${parseFloat(o.total_cny).toFixed(2)}</span>` : '';
-    const shippingCur = rate > 0 ? ((o.shipping_fee || 0) * rate / rate).toFixed(2) : (o.shipping_fee || 0);
-    // shipping_fee 存的是结算货币金额，直接用
-    const handlingCur = rate > 0 ? ((o.handling_fee || 0)).toFixed(2) : '0.00';
+    // 计算货物/运费/手续费各自对应的 CNY
+    let goodsCNY = 0, shipCNY = 0, handlingCNY = 0;
+    const goodsUSD = totalUSD;
+    const shippingUSD = (parseFloat(o.shipping_fee) || 0) * rate;
+    const handlingUSD = (parseFloat(o.handling_fee) || 0) * rate;
+    const grandUSD = goodsUSD + shippingUSD;
+    if (o.total_cny > 0 && grandUSD > 0) {
+      goodsCNY   = o.total_cny * (goodsUSD / grandUSD);
+      shipCNY    = o.total_cny * (shippingUSD / grandUSD);
+      handlingCNY = handlingUSD * (o.total_cny / grandUSD);
+    }
+    const goodsCNYStr   = goodsCNY > 0 ? ' = ¥' + goodsCNY.toFixed(2) : '';
+    const shipCNYStr    = shipCNY > 0 ? ' = ¥' + shipCNY.toFixed(2) : '';
+    const totalCNYStr   = o.total_cny > 0 ? ' = ¥' + parseFloat(o.total_cny).toFixed(2) : '';
+    const handlingStr    = o.handling_fee > 0 ? sym + parseFloat(o.handling_fee).toFixed(2) : '';
+    const handlingCNYStr = handlingCNY > 0 ? ' = ¥' + handlingCNY.toFixed(2) : '';
     return `<div class="order-card border ${sc[o.status] || 'border-gray-200'} rounded-xl p-4 bg-white shadow-sm">
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
@@ -1015,11 +1027,10 @@ function renderOrders() {
       <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 overflow-hidden">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + esc(p.sku) : ''; return `<div class="text-xs min-w-0"><span class="truncate">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span></div>`; }).join('')}</div>
       <div class="flex flex-wrap items-center justify-between mt-3 pt-2 border-t border-gray-100 gap-1">
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-          <span class="text-gray-500">货物：<span class="font-semibold text-blue-700">${sym}${totalCur.toFixed(2)}</span></span>
-          ${o.shipping_fee > 0 ? '<span class="text-gray-500">运费：<span class="text-orange-500">' + sym + parseFloat(o.shipping_fee).toFixed(2) + '</span></span>' : ''}
-          <span class="text-gray-500">总价：<span class="font-bold text-green-700">${sym}${(totalCur + (parseFloat(o.shipping_fee) || 0)).toFixed(2)}</span></span>
-          ${o.total_cny > 0 ? '<span class="font-bold text-gray-700">≈ ¥' + parseFloat(o.total_cny).toFixed(2) + '</span>' : ''}
-          ${o.handling_fee > 0 ? '<span class="text-red-400" title="从利润扣除">手续费-' + sym + parseFloat(o.handling_fee).toFixed(2) + '</span>' : ''}
+          <span class="text-gray-500">货物：<span class="font-semibold text-blue-700">${sym}${totalCur.toFixed(2)}</span><span class="text-gray-400">${goodsCNYStr}</span></span>
+          ${o.shipping_fee > 0 ? '<span class="text-gray-500">运费：<span class="text-orange-500">' + sym + parseFloat(o.shipping_fee).toFixed(2) + '</span><span class="text-gray-400">' + shipCNYStr + '</span></span>' : ''}
+          <span class="text-gray-500">总价：<span class="font-bold text-green-700">${sym}${(totalCur + (parseFloat(o.shipping_fee) || 0)).toFixed(2)}</span><span class="font-bold text-gray-700">' + totalCNYStr + '</span></span>
+          ${o.handling_fee > 0 ? '<span class="text-red-400" title="从利润扣除">手续费-' + handlingStr + '<span class="text-gray-400">' + handlingCNYStr + '</span></span>' : ''}
         </div>
         <div class="flex items-center gap-1">${shipBtn}${deliveredBtn}${btnHtml}</div>
       </div>
