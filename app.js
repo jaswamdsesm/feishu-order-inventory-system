@@ -1032,33 +1032,45 @@ function updateOrdersSummary(filtered) {
   const countEl = document.getElementById('summary-count');
   const goodsEl = document.getElementById('summary-goods');
   const shipEl = document.getElementById('summary-shipping');
+  const handlingEl = document.getElementById('summary-handling');
   const cnyEl = document.getElementById('summary-cny');
+  const profitEl = document.getElementById('summary-profit');
   if (!countEl) return;
   countEl.textContent = filtered.length;
   if (filtered.length === 0) {
     goodsEl.textContent = '¥0.00';
     shipEl.textContent = '¥0.00';
+    handlingEl.textContent = '¥0.00';
     cnyEl.textContent = '¥0.00';
+    profitEl.textContent = '¥0.00';
     return;
   }
-  let totalGoodsCNY = 0, totalShipCNY = 0, totalCNY = 0;
+  let totalGoodsCNY = 0, totalShipCNY = 0, totalHandlingCNY = 0, totalCNY = 0;
   filtered.forEach(o => {
     const items = allOrderItems.filter(i => i.order_id === o.id);
     const goodsUSD = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
     const rate = o.exchange_rate || 1;
     const shippingCur = parseFloat(o.shipping_fee) || 0;
     const shippingUSD = shippingCur * rate;
+    const handlingCur = parseFloat(o.handling_fee) || 0;
+    const handlingUSD = handlingCur * rate;
     const grandUSD = goodsUSD + shippingUSD;
     if (o.total_cny > 0 && grandUSD > 0) {
-      // 用订单保存时的汇率反推，货物/运费 CNY 按比例拆分
       totalGoodsCNY += o.total_cny * (goodsUSD / grandUSD);
       totalShipCNY += o.total_cny * (shippingUSD / grandUSD);
       totalCNY += o.total_cny;
     }
+    // 手续费 CNY 用同比例汇率
+    if (o.total_cny > 0 && grandUSD > 0) {
+      totalHandlingCNY += handlingUSD * (o.total_cny / grandUSD);
+    }
   });
   goodsEl.textContent = '¥' + totalGoodsCNY.toFixed(2);
   shipEl.textContent = '¥' + totalShipCNY.toFixed(2);
+  handlingEl.textContent = '¥' + totalHandlingCNY.toFixed(2);
   cnyEl.textContent = '¥' + totalCNY.toFixed(2);
+  const profit = totalGoodsCNY - totalShipCNY - totalHandlingCNY;
+  profitEl.textContent = '¥' + profit.toFixed(2);
 }
 
 function statusText(s) { return { pending: '待处理', shipped: '已发货', completed: '已完成', cancelled: '已取消' }[s] || s; }
