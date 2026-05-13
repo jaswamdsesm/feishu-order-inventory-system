@@ -991,36 +991,36 @@ function renderOrders() {
     const btnHtml = canEdit ? `<button onclick="openOrderModal('${o.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteOrder('${o.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
     const deliveredBtn = (o.status === 'shipped' && isAdmin) ? `<button onclick="markDelivered('${o.id}')" class="text-xs text-blue-600 hover:underline mr-2">📦 已送达</button>` : '';
     // 直接读数据库字段，不再反推
-    const goodsCNYStr   = (o.goods_cny > 0) ? ' = ¥' + parseFloat(o.goods_cny).toFixed(2) : '';
-    const shipCNYStr    = (o.shipping_cny > 0) ? ' = ¥' + parseFloat(o.shipping_cny).toFixed(2) : '';
-    const totalCNYStr   = (o.total_cny > 0) ? ' = ¥' + parseFloat(o.total_cny).toFixed(2) : '';
-    const handlingStr    = o.handling_fee > 0 ? sym + parseFloat(o.handling_fee).toFixed(2) : '';
-    const handlingCNYStr = (o.handling_cny > 0) ? ' = ¥' + parseFloat(o.handling_cny).toFixed(2) : '';
+    const goodsCNYStr   = (o.goods_cny > 0) ? ` = ¥${parseFloat(o.goods_cny).toFixed(2)}` : '';
+    const shipCNYStr    = (o.shipping_cny > 0) ? ` = ¥${parseFloat(o.shipping_cny).toFixed(2)}` : '';
+    const totalCNYStr   = (o.total_cny > 0) ? ` = ¥${parseFloat(o.total_cny).toFixed(2)}` : '';
+    const handlingStr    = o.handling_fee > 0 ? `${sym}${parseFloat(o.handling_fee).toFixed(2)}` : '';
+    const handlingCNYStr = (o.handling_cny > 0) ? ` = ¥${parseFloat(o.handling_cny).toFixed(2)}` : '';
     return `<div class="order-card border ${sc[o.status] || 'border-gray-200'} rounded-xl p-4 bg-white shadow-sm">
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
           <span class="font-bold text-base">${esc(o.order_no)}</span>
           <span class="text-xs px-2 py-0.5 rounded-full ${sc2[o.status] || ''} font-medium bg-opacity-50">${statusText(o.status)}</span>
-          ${cur !== 'USD' ? '<span class="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">' + cur + '</span>' : ''}
+          ${cur !== 'USD' ? `<span class="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">${cur}</span>` : ''}
         </div>
         <span class="text-sm text-gray-700 font-semibold">${(o.created_at || '').slice(0, 10)}</span>
       </div>
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mb-3">
         <span>👤 ${esc(o.customer_name)}</span>
         <span>📞 ${phoneHtml || '—'}</span>
-        ${o.country ? '<span>🌍 ' + esc(o.country) + '</span>' : ''}
-        ${o.payment_method ? '<span class="text-purple-500">' + PAYMENT_LABELS[o.payment_method] + '</span>' : ''}
-        ${o.owner_name ? '<span class="text-blue-400">归属：' + esc(o.owner_name) + '</span>' : ''}
+        ${o.country ? `<span>🌍 ${esc(o.country)}</span>` : ''}
+        ${o.payment_method ? `<span class="text-purple-500">${PAYMENT_LABELS[o.payment_method]}</span>` : ''}
+        ${o.owner_name ? `<span class="text-blue-400">归属：${esc(o.owner_name)}</span>` : ''}
       </div>
-      ${o.customer_address ? '<div class="text-xs text-gray-400 mb-2 truncate">📍 ' + addrHtml + '</div>' : ''}
+      ${o.customer_address ? `<div class="text-xs text-gray-400 mb-2 truncate">📍 ${addrHtml}</div>` : ''}
       ${trackHtml}
-      <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 overflow-hidden">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + esc(p.sku) : ''; return `<div class="text-xs min-w-0"><span class="truncate">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span></div>`; }).join('')}</div>
+      <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 overflow-hidden">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ` ${esc(p.sku)}` : ''; return `<div class="text-xs min-w-0"><span class="truncate">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span></div>`; }).join('')}</div>
       <div class="flex flex-wrap items-center justify-between mt-3 pt-2 border-t border-gray-100 gap-1">
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           <span class="text-gray-500">货物：<span class="font-semibold text-blue-700">${sym}${totalCur.toFixed(2)}</span><span class="text-gray-400">${goodsCNYStr}</span></span>
-          ${o.shipping_fee > 0 ? '<span class="text-gray-500">运费：<span class="text-orange-500">' + sym + parseFloat(o.shipping_fee).toFixed(2) + '</span><span class="text-gray-400">' + shipCNYStr + '</span></span>' : ''}
-          <span class="text-gray-500">总价：<span class="font-bold text-green-700">${sym}${(totalCur + (parseFloat(o.shipping_fee) || 0)).toFixed(2)}</span><span class="font-bold text-gray-700">' + totalCNYStr + '</span></span>
-          ${o.handling_fee > 0 ? '<span class="text-red-400" title="从利润扣除">手续费-' + handlingStr + '<span class="text-gray-400">' + handlingCNYStr + '</span></span>' : ''}
+          ${o.shipping_fee > 0 ? `<span class="text-gray-500">运费：<span class="text-orange-500">${sym}${parseFloat(o.shipping_fee).toFixed(2)}</span><span class="text-gray-400">${shipCNYStr}</span></span>` : ''}
+          <span class="text-gray-500">总价：<span class="font-bold text-green-700">${sym}${(totalCur + (parseFloat(o.shipping_fee) || 0)).toFixed(2)}</span><span class="font-bold text-gray-700">${totalCNYStr}</span></span>
+          ${o.handling_fee > 0 ? `<span class="text-red-400" title="从利润扣除">手续费-${handlingStr}<span class="text-gray-400">${handlingCNYStr}</span></span>` : ''}
         </div>
         <div class="flex items-center gap-1">${shipBtn}${deliveredBtn}${btnHtml}</div>
       </div>
