@@ -979,7 +979,8 @@ function renderOrders() {
     const cur = o.settlement_currency || 'USD';
     const rate = o.exchange_rate || 1; // 1 cur = ? USD
     const sym = curSym(cur);
-    const totalCur = totalUSD / rate;
+    // totalUSD 实际是结算货币金额（unit_price 以结算货币填写），直接显示
+    const totalCur = totalUSD;
     const phoneHtml = phoneHidden ? (o.customer_phone ? '***' : '') : esc(o.customer_phone || '');
     const addrHtml = phoneHidden ? (o.customer_address ? '***' : '') : esc(o.customer_address || '');
     const sc = { pending: 'border-yellow-300 bg-yellow-50', shipped: 'border-blue-300 bg-blue-50', completed: 'border-green-300 bg-green-50', cancelled: 'border-gray-200 bg-gray-50' };
@@ -1310,16 +1311,26 @@ async function saveOrder() {
     const totalAmt = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
     // 结算货币相关
     const settlementCurrency = document.getElementById('order-settlement-currency')?.value || 'USD';
-    const exchangeRate = _orderExchangeRate; // 1 结算货币 = ? USD
+    const exchangeRate = _orderExchangeRate; // 1 结算货币 = ? USD（用于利润换算）
+    // 实时拉取结算货币→人民币汇率（保存时锁定）
+    let cnyRate = _cnyExchangeRate || 7.25;
+    try {
+      const resp = await fetch(`https://open.er-api.com/v6/latest/${settlementCurrency}`);
+      const data = await resp.json();
+      if (data && data.rates && data.rates.CNY) {
+        cnyRate = data.rates.CNY;
+        _cnyExchangeRate = cnyRate;
+      }
+    } catch (e) { console.warn('获取实时汇率失败，使用缓存值', e); }
+    // 货物/运费/手续费直接用结算货币金额 × 结算货币→CNY汇率
+    const goodsCNY   = totalAmt * cnyRate;
+    const shippingCNY = (parseFloat(shippingFee) || 0) * cnyRate;
+    const handlingCNY = handlingFee * cnyRate;
+    const totalCNY    = (totalAmt + (parseFloat(shippingFee) || 0)) * cnyRate;
+    // 以下用于利润计算（USD）
     const shippingUSD = (parseFloat(shippingFee) || 0) * exchangeRate;
     const handlingUSD = handlingFee * exchangeRate;
-    // 总额 = 货物 + 运费，不含手续费（手续费从利润扣）
     const grandTotalUSD = totalAmt + shippingUSD;
-    const totalCNY = grandTotalUSD * _orderUsdToCny;
-    // 分别计算各分项 CNY（直接存，汇总时直接加总）
-    const goodsCNY   = totalAmt * _orderUsdToCny;
-    const shippingCNY = shippingUSD * _orderUsdToCny;
-    const handlingCNY = handlingUSD * _orderUsdToCny;
     // 新增时传 null 让 RPC 走 INSERT（数据库自动生成 UUID），编辑时传已有 ID
     const newOrderId = editingOrderId || null;
     const { data, error } = await sb.rpc('upsert_order', {
@@ -1343,6 +1354,7 @@ async function saveOrder() {
       p_tracking_no: trackingNo || null,
       p_settlement_currency: settlementCurrency,
       p_exchange_rate: exchangeRate,
+      p_cny_exchange_rate: parseFloat(cnyRate.toFixed(6)),
       p_total_cny: parseFloat(totalCNY.toFixed(2)),
       p_goods_cny: parseFloat(goodsCNY.toFixed(2)),
       p_shipping_cny: parseFloat(shippingCNY.toFixed(2)),
@@ -1393,6 +1405,7 @@ async function markDelivered(id) {
       p_remark: o.remark || '',
       p_settlement_currency: o.settlement_currency || 'USD',
       p_exchange_rate: o.exchange_rate || 1,
+      p_cny_exchange_rate: o.cny_exchange_rate || _cnyExchangeRate || 7.25,
       p_total_cny: o.total_cny || 0,
       p_goods_cny: o.goods_cny || 0,
       p_shipping_cny: o.shipping_cny || 0,
@@ -2831,7 +2844,8 @@ function curSym(c) { return CURRENCY_SYMBOLS[c] || c + ' '; }
 // ============ 结算货币 & 汇率 ============
 let _settlementCurrency = 'USD';
 let _orderExchangeRate = 1; // 结算货币→USD 的汇率（即 1 结算货币 = ? USD）
-let _orderUsdToCny = 7.25; // 1 USD = ? CNY
+let _orderUsdToCny = 7.25; // 1 USD = ? CNY（仅用于显示参考）
+let _cnyExchangeRate = 7.25; // 1 结算货币 = ? CNY（实时汇率，保存时锁定）
 
 function getCurrencyUsdRate(cur) {
   // 返回 1 cur = ? USD
