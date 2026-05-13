@@ -990,22 +990,12 @@ function renderOrders() {
     const canEdit = isAdmin && !['shipped','completed'].includes(o.status);
     const btnHtml = canEdit ? `<button onclick="openOrderModal('${o.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteOrder('${o.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
     const deliveredBtn = (o.status === 'shipped' && isAdmin) ? `<button onclick="markDelivered('${o.id}')" class="text-xs text-blue-600 hover:underline mr-2">📦 已送达</button>` : '';
-    // 计算货物/运费/手续费各自对应的 CNY
-    let goodsCNY = 0, shipCNY = 0, handlingCNY = 0;
-    const goodsUSD = totalUSD;
-    const shippingUSD = (parseFloat(o.shipping_fee) || 0) * rate;
-    const handlingUSD = (parseFloat(o.handling_fee) || 0) * rate;
-    const grandUSD = goodsUSD + shippingUSD;
-    if (o.total_cny > 0 && grandUSD > 0) {
-      goodsCNY   = o.total_cny * (goodsUSD / grandUSD);
-      shipCNY    = o.total_cny * (shippingUSD / grandUSD);
-      handlingCNY = handlingUSD * (o.total_cny / grandUSD);
-    }
-    const goodsCNYStr   = goodsCNY > 0 ? ' = ¥' + goodsCNY.toFixed(2) : '';
-    const shipCNYStr    = shipCNY > 0 ? ' = ¥' + shipCNY.toFixed(2) : '';
-    const totalCNYStr   = o.total_cny > 0 ? ' = ¥' + parseFloat(o.total_cny).toFixed(2) : '';
+    // 直接读数据库字段，不再反推
+    const goodsCNYStr   = (o.goods_cny > 0) ? ' = ¥' + parseFloat(o.goods_cny).toFixed(2) : '';
+    const shipCNYStr    = (o.shipping_cny > 0) ? ' = ¥' + parseFloat(o.shipping_cny).toFixed(2) : '';
+    const totalCNYStr   = (o.total_cny > 0) ? ' = ¥' + parseFloat(o.total_cny).toFixed(2) : '';
     const handlingStr    = o.handling_fee > 0 ? sym + parseFloat(o.handling_fee).toFixed(2) : '';
-    const handlingCNYStr = handlingCNY > 0 ? ' = ¥' + handlingCNY.toFixed(2) : '';
+    const handlingCNYStr = (o.handling_cny > 0) ? ' = ¥' + parseFloat(o.handling_cny).toFixed(2) : '';
     return `<div class="order-card border ${sc[o.status] || 'border-gray-200'} rounded-xl p-4 bg-white shadow-sm">
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
@@ -1058,23 +1048,10 @@ function updateOrdersSummary(filtered) {
   }
   let totalGoodsCNY = 0, totalShipCNY = 0, totalHandlingCNY = 0, totalCNY = 0;
   filtered.forEach(o => {
-    const items = allOrderItems.filter(i => i.order_id === o.id);
-    const goodsUSD = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
-    const rate = o.exchange_rate || 1;
-    const shippingCur = parseFloat(o.shipping_fee) || 0;
-    const shippingUSD = shippingCur * rate;
-    const handlingCur = parseFloat(o.handling_fee) || 0;
-    const handlingUSD = handlingCur * rate;
-    const grandUSD = goodsUSD + shippingUSD;
-    if (o.total_cny > 0 && grandUSD > 0) {
-      totalGoodsCNY += o.total_cny * (goodsUSD / grandUSD);
-      totalShipCNY += o.total_cny * (shippingUSD / grandUSD);
-      totalCNY += o.total_cny;
-    }
-    // 手续费 CNY 用同比例汇率
-    if (o.total_cny > 0 && grandUSD > 0) {
-      totalHandlingCNY += handlingUSD * (o.total_cny / grandUSD);
-    }
+    totalGoodsCNY   += parseFloat(o.goods_cny) || 0;
+    totalShipCNY    += parseFloat(o.shipping_cny) || 0;
+    totalHandlingCNY += parseFloat(o.handling_cny) || 0;
+    totalCNY        += parseFloat(o.total_cny) || 0;
   });
   goodsEl.textContent = '¥' + totalGoodsCNY.toFixed(2);
   shipEl.textContent = '¥' + totalShipCNY.toFixed(2);
@@ -1339,6 +1316,10 @@ async function saveOrder() {
     // 总额 = 货物 + 运费，不含手续费（手续费从利润扣）
     const grandTotalUSD = totalAmt + shippingUSD;
     const totalCNY = grandTotalUSD * _orderUsdToCny;
+    // 分别计算各分项 CNY（直接存，汇总时直接加总）
+    const goodsCNY   = totalAmt * _orderUsdToCny;
+    const shippingCNY = shippingUSD * _orderUsdToCny;
+    const handlingCNY = handlingUSD * _orderUsdToCny;
     // 新增时传 null 让 RPC 走 INSERT（数据库自动生成 UUID），编辑时传已有 ID
     const newOrderId = editingOrderId || null;
     const { data, error } = await sb.rpc('upsert_order', {
@@ -1362,7 +1343,10 @@ async function saveOrder() {
       p_tracking_no: trackingNo || null,
       p_settlement_currency: settlementCurrency,
       p_exchange_rate: exchangeRate,
-      p_total_cny: parseFloat(totalCNY.toFixed(2))
+      p_total_cny: parseFloat(totalCNY.toFixed(2)),
+      p_goods_cny: parseFloat(goodsCNY.toFixed(2)),
+      p_shipping_cny: parseFloat(shippingCNY.toFixed(2)),
+      p_handling_cny: parseFloat(handlingCNY.toFixed(2))
     });
     if (error) throw error;
     closeModal('modal-order');
@@ -1409,7 +1393,10 @@ async function markDelivered(id) {
       p_remark: o.remark || '',
       p_settlement_currency: o.settlement_currency || 'USD',
       p_exchange_rate: o.exchange_rate || 1,
-      p_total_cny: o.total_cny || 0
+      p_total_cny: o.total_cny || 0,
+      p_goods_cny: o.goods_cny || 0,
+      p_shipping_cny: o.shipping_cny || 0,
+      p_handling_cny: o.handling_cny || 0
     });
     if (error) throw error;
     o.status = 'completed';
