@@ -1288,8 +1288,8 @@ async function saveOrder() {
     // 总额 = 货物 + 运费，不含手续费（手续费从利润扣）
     const grandTotalUSD = totalAmt + shippingUSD;
     const totalCNY = grandTotalUSD * _orderUsdToCny;
-    // 新增订单时生成 UUID
-    const newOrderId = editingOrderId || crypto.randomUUID();
+    // 新增时传 null 让 RPC 走 INSERT（数据库自动生成 UUID），编辑时传已有 ID
+    const newOrderId = editingOrderId || null;
     const { data, error } = await sb.rpc('upsert_order', {
       p_id: newOrderId,
       p_order_no: orderNo,
