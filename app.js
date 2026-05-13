@@ -1025,14 +1025,16 @@ function renderOrders() {
           <span class="text-gray-500">货物：<span class="font-semibold text-blue-700">${sym}${totalCur.toFixed(2)}</span></span>
           ${o.shipping_fee > 0 ? '<span class="text-gray-500">运费：<span class="text-orange-500">' + sym + parseFloat(o.shipping_fee).toFixed(2) + '</span></span>' : ''}
         </div>
-        ${cnyHtml}
       </div>
       <div class="flex items-center justify-between mt-1">
         <div class="flex flex-wrap items-center gap-2 text-xs">
           <span class="text-gray-500">总价：<span class="font-bold text-green-700">${sym}${(totalCur + (parseFloat(o.shipping_fee) || 0)).toFixed(2)}</span></span>
           ${o.handling_fee > 0 ? '<span class="text-red-400" title="从利润扣除">手续费-' + sym + parseFloat(o.handling_fee).toFixed(2) + '</span>' : ''}
         </div>
-        <div class="flex items-center gap-1">${shipBtn}${deliveredBtn}${btnHtml}</div>
+        <div class="flex items-center gap-2">
+          ${o.total_cny > 0 ? '<span class="text-xs font-bold text-gray-700">≈ ¥' + parseFloat(o.total_cny).toFixed(2) + '</span>' : ''}
+          <div class="flex items-center gap-1">${shipBtn}${deliveredBtn}${btnHtml}</div>
+        </div>
       </div>
     </div>`;
   }).join('');
