@@ -3575,13 +3575,16 @@ async function autoCalcShipping() {
   }
 
   // 产品名称 → 重量库类别 映射规则
+  // 3ml BAC Water → 3ML水 | 10ml BAC Water → 10ML水 | HCG/NAD → 大冻干粉(NAD、HCG) 10ML瓶 | 其他 → 冻干粉
   function getWeightCategory(productName) {
     const n = (productName || '').toLowerCase();
-    if (n.includes('acetic') || (n.includes('aa') && n.includes('3ml'))) return '3ML水';
-    if (n.includes('bac') && (n.includes('wa3') || n.includes('ba3') || n.includes('3ml'))) return '3ML水';
-    if (n.includes('bac') && (n.includes('wa10') || n.includes('ba10') || n.includes('10ml'))) return '10ML水';
-    if (n.includes('nad') || n.includes('nj500') || n.includes('nj1000')) return '大冻干粉（NAD、HCG）10ML瓶';
-    if (n.includes('glutathione') || n.includes('gtt1500')) return '大冻干粉（NAD、HCG）10ML瓶';
+    // HCG / NAD → 大冻干粉
+    if (n.includes('hcg') || n.includes('nad')) return '大冻干粉(NAD、HCG) 10ML瓶';
+    // BAC Water 10ml → 10ML水
+    if ((n.includes('bac') || n.includes('water')) && n.includes('10ml')) return '10ML水';
+    // BAC Water 3ml → 3ML水
+    if ((n.includes('bac') || n.includes('water')) && n.includes('3ml')) return '3ML水';
+    // 其他全部 → 冻干粉
     return '冻干粉';
   }
 
@@ -3597,7 +3600,7 @@ async function autoCalcShipping() {
     const product = allProducts.find(p => p.id === pid);
     if (!product) return;
     const category = getWeightCategory(product.name);
-    const wp = weightProducts.find(w => w.type !== 'packaging' && (w.name === category || w.name.includes(category.slice(0, 4))));
+    const wp = weightProducts.find(w => w.type !== 'packaging' && w.name === category);
     if (!wp) {
       unmatchedProducts.push(product.name + `（需重量库有"${category}"）`);
       return;
