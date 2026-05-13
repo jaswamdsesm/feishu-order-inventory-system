@@ -1069,7 +1069,7 @@ function updateOrdersSummary(filtered) {
   shipEl.textContent = '¥' + totalShipCNY.toFixed(2);
   handlingEl.textContent = '¥' + totalHandlingCNY.toFixed(2);
   cnyEl.textContent = '¥' + totalCNY.toFixed(2);
-  const profit = totalGoodsCNY - totalShipCNY - totalHandlingCNY;
+  const profit = totalGoodsCNY - totalHandlingCNY;
   profitEl.textContent = '¥' + profit.toFixed(2);
 }
 
