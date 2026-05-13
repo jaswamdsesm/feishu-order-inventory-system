@@ -1014,20 +1014,14 @@ function renderOrders() {
       ${trackHtml}
       <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 overflow-hidden">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + esc(p.sku) : ''; const lineCur = ((i.unit_price || 0) * i.quantity / rate); return `<div class="flex items-center justify-between text-xs min-w-0"><span class="truncate">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span><span class="text-gray-500 shrink-0 ml-2">${sym}${lineCur.toFixed(2)}</span></div>`; }).join('')}</div>
       <div class="flex flex-wrap items-center justify-between mt-3 pt-2 border-t border-gray-100 gap-1">
-        <div class="flex flex-wrap items-center gap-2 text-xs">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           <span class="text-gray-500">货物：<span class="font-semibold text-blue-700">${sym}${totalCur.toFixed(2)}</span></span>
           ${o.shipping_fee > 0 ? '<span class="text-gray-500">运费：<span class="text-orange-500">' + sym + parseFloat(o.shipping_fee).toFixed(2) + '</span></span>' : ''}
-        </div>
-      </div>
-      <div class="flex items-center justify-between mt-1">
-        <div class="flex flex-wrap items-center gap-2 text-xs">
           <span class="text-gray-500">总价：<span class="font-bold text-green-700">${sym}${(totalCur + (parseFloat(o.shipping_fee) || 0)).toFixed(2)}</span></span>
+          ${o.total_cny > 0 ? '<span class="font-bold text-gray-700">≈ ¥' + parseFloat(o.total_cny).toFixed(2) + '</span>' : ''}
           ${o.handling_fee > 0 ? '<span class="text-red-400" title="从利润扣除">手续费-' + sym + parseFloat(o.handling_fee).toFixed(2) + '</span>' : ''}
         </div>
-        <div class="flex items-center gap-2">
-          ${o.total_cny > 0 ? '<span class="text-xs font-bold text-gray-700">≈ ¥' + parseFloat(o.total_cny).toFixed(2) + '</span>' : ''}
-          <div class="flex items-center gap-1">${shipBtn}${deliveredBtn}${btnHtml}</div>
-        </div>
+        <div class="flex items-center gap-1">${shipBtn}${deliveredBtn}${btnHtml}</div>
       </div>
     </div>`;
   }).join('');
