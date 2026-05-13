@@ -1181,6 +1181,8 @@ async function openOrderModal(id) {
     document.getElementById('order-customer-phone').value = '';
     document.getElementById('order-customer-email').value = '';
     document.getElementById('order-customer-addr').value = '';
+    document.getElementById('order-customer-country').value = '';
+    document.getElementById('order-customer-country-input').value = '';
     document.getElementById('order-status').value = 'pending';
     document.getElementById('order-remark').value = '';
     document.getElementById('order-shipping-fee').value = '';
