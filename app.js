@@ -980,6 +980,15 @@ function renderOrders() {
     const rate = o.exchange_rate || 1; // 1 cur = ? USD
     const sym = curSym(cur);
     const totalCur = totalUSD / rate;
+    // 计算 ≈¥CNY（从订单保存的 total_cny 反推）
+    const shippingCur2 = parseFloat(o.shipping_fee) || 0;
+    const shippingUSD2 = shippingCur2 * rate;
+    const grandUSD2 = totalUSD + shippingUSD2;
+    let goodsCNY = 0, shipCNY = 0;
+    if (o.total_cny > 0 && grandUSD2 > 0) {
+      goodsCNY = o.total_cny * (totalUSD / grandUSD2);
+      shipCNY = o.total_cny * (shippingUSD2 / grandUSD2);
+    }
     const phoneHtml = phoneHidden ? (o.customer_phone ? '***' : '') : esc(o.customer_phone || '');
     const addrHtml = phoneHidden ? (o.customer_address ? '***' : '') : esc(o.customer_address || '');
     const sc = { pending: 'border-yellow-300 bg-yellow-50', shipped: 'border-blue-300 bg-blue-50', completed: 'border-green-300 bg-green-50', cancelled: 'border-gray-200 bg-gray-50' };
@@ -1015,8 +1024,8 @@ function renderOrders() {
       <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 overflow-hidden">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + esc(p.sku) : ''; return `<div class="text-xs min-w-0"><span class="truncate">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span></div>`; }).join('')}</div>
       <div class="flex flex-wrap items-center justify-between mt-3 pt-2 border-t border-gray-100 gap-1">
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-          <span class="text-gray-500">货物：<span class="font-semibold text-blue-700">${sym}${totalCur.toFixed(2)}</span></span>
-          ${o.shipping_fee > 0 ? '<span class="text-gray-500">运费：<span class="text-orange-500">' + sym + parseFloat(o.shipping_fee).toFixed(2) + '</span></span>' : ''}
+          <span class="text-gray-500">货物：<span class="font-semibold text-blue-700">${sym}${totalCur.toFixed(2)}</span>${goodsCNY > 0 ? ' <span class="text-gray-400">≈¥' + goodsCNY.toFixed(2) + '</span>' : ''}</span>
+          ${o.shipping_fee > 0 ? '<span class="text-gray-500">运费：<span class="text-orange-500">' + sym + parseFloat(o.shipping_fee).toFixed(2) + '</span>' + (shipCNY > 0 ? ' <span class="text-gray-400">≈¥' + shipCNY.toFixed(2) + '</span>' : '') + '</span>' : ''}
           <span class="text-gray-500">总价：<span class="font-bold text-green-700">${sym}${(totalCur + (parseFloat(o.shipping_fee) || 0)).toFixed(2)}</span></span>
           ${o.total_cny > 0 ? '<span class="font-bold text-gray-700">≈ ¥' + parseFloat(o.total_cny).toFixed(2) + '</span>' : ''}
           ${o.handling_fee > 0 ? '<span class="text-red-400" title="从利润扣除">手续费-' + sym + parseFloat(o.handling_fee).toFixed(2) + '</span>' : ''}
@@ -1049,13 +1058,12 @@ function updateOrdersSummary(filtered) {
     const shippingCur = parseFloat(o.shipping_fee) || 0;
     const shippingUSD = shippingCur * rate;
     const grandUSD = goodsUSD + shippingUSD;
-    let usdToCny = 7.25;
-    if (o.total_cny > 0 && grandUSD > 0) { usdToCny = o.total_cny / grandUSD; }
-    const goodsCNY = goodsUSD * usdToCny;
-    const shipCNY = shippingUSD * usdToCny;
-    totalGoodsCNY += goodsCNY;
-    totalShipCNY += shipCNY;
-    totalCNY += goodsCNY + shipCNY;
+    if (o.total_cny > 0 && grandUSD > 0) {
+      // 用订单保存时的汇率反推，货物/运费 CNY 按比例拆分
+      totalGoodsCNY += o.total_cny * (goodsUSD / grandUSD);
+      totalShipCNY += o.total_cny * (shippingUSD / grandUSD);
+      totalCNY += o.total_cny;
+    }
   });
   goodsEl.textContent = '¥' + totalGoodsCNY.toFixed(2);
   shipEl.textContent = '¥' + totalShipCNY.toFixed(2);
