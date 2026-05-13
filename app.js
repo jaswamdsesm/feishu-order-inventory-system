@@ -979,8 +979,8 @@ function renderOrders() {
   document.getElementById('orders-list').innerHTML = filtered.map(o => {
     const items = allOrderItems.filter(i => i.order_id === o.id);
     let totalUSD = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
-    // 防护：如果 items 计算为 0 但 orders 表有值，回退到 total_amount
-    if (totalUSD === 0 && items.length > 0 && (o.total_amount || 0) > 0) {
+    // 防护：如果 items 没加载或计算为 0，回退到 orders 表的 total_amount
+    if (totalUSD === 0 && (o.total_amount || 0) > 0) {
       totalUSD = o.total_amount;
     }
     const cur = o.settlement_currency || 'USD';
@@ -1140,7 +1140,12 @@ async function openOrderModal(id) {
         await loadOrders();
         items = allOrderItems.filter(i => i.order_id === id);
       }
-      items.forEach(i => addOrderItemRow(i));
+      if (items.length === 0) {
+        // 仍然没有订单项，用 product_summary 兜底显示一行提示
+        showToast('该订单产品明细未加载，请刷新页面重试', 'warning');
+      } else {
+        items.forEach(i => addOrderItemRow(i));
+      }
     }
   } else {
     document.getElementById('order-customer-name').value = '';
