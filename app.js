@@ -3575,15 +3575,17 @@ async function autoCalcShipping() {
   }
 
   // 产品名称 → 重量库类别 映射规则
-  // 3ml BAC Water → 3ML水 | 10ml BAC Water → 10ML水 | HCG/NAD → 大冻干粉(NAD、HCG) 10ML瓶 | 其他 → 冻干粉
+  // HCG/NAD → 大冻干粉 | 10ml BAC Water → 10ML水 | 3ml BAC Water / AA(Acetic Acid) → 3ML水 | 其他 → 冻干粉
   function getWeightCategory(productName) {
     const n = (productName || '').toLowerCase();
     // HCG / NAD → 大冻干粉
     if (n.includes('hcg') || n.includes('nad')) return '大冻干粉(NAD、HCG) 10ML瓶';
     // BAC Water 10ml → 10ML水
     if ((n.includes('bac') || n.includes('water')) && n.includes('10ml')) return '10ML水';
-    // BAC Water 3ml → 3ML水
-    if ((n.includes('bac') || n.includes('water')) && n.includes('3ml')) return '3ML水';
+    // BAC Water 3ml / Acetic Acid Water(AA) → 3ML水
+    if ((n.includes('bac') || n.includes('water') || n.includes('acetic')) && n.includes('3ml')) return '3ML水';
+    if (n.includes('aa') && n.includes('acetic')) return '3ML水';
+    if (n.includes('acetic acid')) return '3ML水';
     // 其他全部 → 冻干粉
     return '冻干粉';
   }
