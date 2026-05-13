@@ -3597,7 +3597,7 @@ async function autoCalcShipping() {
     const product = allProducts.find(p => p.id === pid);
     if (!product) return;
     const category = getWeightCategory(product.name);
-    const wp = weightProducts.find(w => w.type !== 'packaging' && w.name === category);
+    const wp = weightProducts.find(w => w.type !== 'packaging' && (w.name === category || w.name.includes(category.slice(0, 4))));
     if (!wp) {
       unmatchedProducts.push(product.name + `（需重量库有"${category}"）`);
       return;
