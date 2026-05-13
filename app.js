@@ -1012,7 +1012,7 @@ function renderOrders() {
       </div>
       ${o.customer_address ? '<div class="text-xs text-gray-400 mb-2 truncate">📍 ' + addrHtml + '</div>' : ''}
       ${trackHtml}
-      <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 overflow-hidden">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + esc(p.sku) : ''; const lineCur = ((i.unit_price || 0) * i.quantity / rate); return `<div class="text-xs min-w-0"><span class="truncate">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span><span class="text-gray-500 ml-2">${sym}${lineCur.toFixed(2)}</span></div>`; }).join('')}</div>
+      <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 overflow-hidden">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + esc(p.sku) : ''; return `<div class="text-xs min-w-0"><span class="truncate">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span></div>`; }).join('')}</div>
       <div class="flex flex-wrap items-center justify-between mt-3 pt-2 border-t border-gray-100 gap-1">
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           <span class="text-gray-500">货物：<span class="font-semibold text-blue-700">${sym}${totalCur.toFixed(2)}</span></span>
