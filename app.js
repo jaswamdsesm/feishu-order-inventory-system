@@ -451,65 +451,113 @@ async function init() {
     console.error(err);
     hideLoading();
     showToast('初始化失败:' + err.message, 'error');
+    // 登录失败时显示调试面板
+    const dp = document.getElementById('debug-panel');
+    if (dp) dp.style.display = 'block';
+    debugLog('最终错误: ' + err.message, 'error');
   }
 }
 
+// 调试日志面板（飞书环境无法 F12，显示在页面上）
+function debugLog(msg, type = 'info') {
+  console.log('[DEBUG]', msg, type);
+  const el = document.getElementById('debug-log');
+  if (!el) return;
+  const colors = { info: '#94a3b8', ok: '#22c55e', warn: '#f59e0b', error: '#ef4444' };
+  const line = document.createElement('div');
+  line.style.cssText = `font-size:11px;color:${colors[type] || colors.info};padding:1px 0;font-family:monospace;word-break:break-all;`;
+  line.textContent = `${new Date().toLocaleTimeString()} ${msg}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
 async function feishuLogin() {
+  debugLog('feishuLogin 开始', 'info');
   // 401 自动重试：用 sessionStorage 防止无限循环，最多重试 1 次
   const retryKey = 'feishu_login_401_retried';
   const alreadyRetried = sessionStorage.getItem(retryKey);
+  if (alreadyRetried) debugLog('检测到重试标志，已重试过1次', 'warn');
 
   let code;
   // 等待飞书 JSSDK 加载完成（最多 5 秒）
+  debugLog('等待飞书SDK... tt=' + !!window.tt, 'info');
   if (!window.tt) {
-    try { await new Promise((resolve, reject) => { const t = setTimeout(() => reject(new Error('飞书SDK加载超时')), 5000); const check = setInterval(() => { if (window.tt) { clearTimeout(t); clearInterval(check); resolve(); } }, 100); }); } catch (e) { console.warn(e.message); }
+    try { await new Promise((resolve, reject) => { const t = setTimeout(() => reject(new Error('飞书SDK加载超时')), 5000); const check = setInterval(() => { if (window.tt) { clearTimeout(t); clearInterval(check); resolve(); } }, 100); }); } catch (e) { console.warn(e.message); debugLog('飞书SDK加载失败: ' + e.message, 'error'); }
   }
+  debugLog('tt=' + !!window.tt + ' requestAuthCode=' + !!(window.tt && window.tt.requestAuthCode), 'info');
   // 飞书 WebView 环境：用 JSSDK 获取 auth code
   if (window.tt && window.tt.requestAuthCode) {
+    debugLog('使用 JSSDK 获取 code...', 'info');
     try {
       await new Promise((resolve, reject) => {
         tt.config({ appId: FEISHU_APP_ID, onReady: resolve, onError: reject });
       });
+      debugLog('tt.config 成功', 'ok');
       code = await new Promise((resolve, reject) => {
         tt.requestAuthCode({ appId: FEISHU_APP_ID, success: (res) => resolve(res.code), fail: (err) => reject(new Error('requestAuthCode 失败: ' + JSON.stringify(err))) });
       });
+      debugLog('获取 code 成功, 长度=' + (code ? code.length : 0), 'ok');
     } catch (e) {
+      debugLog('JSSDK 获取 code 失败: ' + e.message, 'error');
       console.warn('JSSDK 获取 code 失败，降级为 URL 重定向:', e);
       code = null;
     }
   }
   // 非飞书环境 或 JSSDK 失败：走 URL 重定向
   if (!code) {
+    debugLog('走 URL 重定向模式', 'info');
     const params = new URLSearchParams(window.location.search);
     code = params.get('code');
     if (!code) {
+      debugLog('URL 中无 code，跳转飞书授权页', 'warn');
       window.location.href = `https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${FEISHU_APP_ID}&redirect_uri=${encodeURIComponent(location.origin + location.pathname)}&response_type=code`;
       return;
     }
+    debugLog('URL code 长度=' + code.length, 'ok');
     // 立即清除 URL 中的 code，防止刷新重复使用
     history.replaceState({}, document.title, location.pathname);
   }
+  debugLog('准备请求 Edge Function, code长度=' + code.length, 'info');
   try {
     let resp = await fetch('https://pvrfqnffygusujsnxsct.functions.supabase.co/feishu-login', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, app_id: FEISHU_APP_ID })
     });
+    debugLog('Edge Function 返回 status=' + resp.status, resp.ok ? 'ok' : 'error');
+    if (!resp.ok) {
+      let errDetail = '';
+      try { const ed = await resp.json(); errDetail = JSON.stringify(ed).substring(0, 200); } catch (e) {}
+      debugLog('错误详情: ' + errDetail, 'error');
+    }
     // 401 自动重试：如果飞书 code 已失效，重新获取一次
     if (resp.status === 401 && !alreadyRetried && window.tt && window.tt.requestAuthCode) {
-      console.warn('飞书登录 401，code 可能已失效，自动重新获取...');
+      debugLog('401! 自动重新获取 code...', 'warn');
       sessionStorage.setItem(retryKey, '1');
-      code = await new Promise((resolve, reject) => {
-        tt.requestAuthCode({ appId: FEISHU_APP_ID, success: (res) => resolve(res.code), fail: (err) => reject(new Error('重试 requestAuthCode 失败')) });
-      });
-      resp = await fetch('https://pvrfqnffygusujsnxsct.functions.supabase.co/feishu-login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, app_id: FEISHU_APP_ID })
-      });
+      try {
+        code = await new Promise((resolve, reject) => {
+          tt.requestAuthCode({ appId: FEISHU_APP_ID, success: (res) => resolve(res.code), fail: (err) => reject(new Error('重试 requestAuthCode 失败')) });
+        });
+        debugLog('重试 code 获取成功, 长度=' + code.length, 'ok');
+        resp = await fetch('https://pvrfqnffygusujsnxsct.functions.supabase.co/feishu-login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, app_id: FEISHU_APP_ID })
+        });
+        debugLog('重试后 status=' + resp.status, resp.ok ? 'ok' : 'error');
+        if (!resp.ok) {
+          let errDetail2 = '';
+          try { const ed2 = await resp.json(); errDetail2 = JSON.stringify(ed2).substring(0, 200); } catch (e) {}
+          debugLog('重试错误详情: ' + errDetail2, 'error');
+        }
+      } catch (retryErr) {
+        debugLog('重试获取 code 失败: ' + retryErr.message, 'error');
+        throw retryErr;
+      }
     }
     if (!resp.ok) { sessionStorage.removeItem(retryKey); const errData = await resp.json().catch(() => null); throw new Error('飞书登录失败(status:' + resp.status + ')' + (errData?.error ? ': ' + errData.error : '')); }
     sessionStorage.removeItem(retryKey);
     const data = await resp.json();
     if (!data.success) throw new Error(data.error || '飞书登录失败');
+    debugLog('登录成功! name=' + (data.user?.name || '?') + ' uid=' + (data.user?.feishu_user_id || '?'), 'ok');
     currentUser = data.user;
     // ALI(592631) 强制超管，其他人从数据库读取角色
     feishuUid = data.user.feishu_user_id || '';
