@@ -1874,8 +1874,6 @@ function setBatchStockMode(mode) {
     label.textContent = '统一设置预警阈值';
     qtyInput.min = 0; qtyInput.value = 10;
     document.getElementById('btn-confirm-batch-stock').textContent = '确认设置';
-  } else {
-    document.getElementById('btn-confirm-batch-stock').textContent = '确认调整';
   }
   renderBatchStockPreview();
 }
