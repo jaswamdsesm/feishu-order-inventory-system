@@ -1854,23 +1854,23 @@ function setBatchStockMode(mode) {
   const alertBtn = document.getElementById('bs-mode-alert');
   const qtyInput = document.getElementById('batch-stock-qty');
   const label = document.getElementById('bs-qty-label');
-  const inactiveCls = 'flex-1 btn-touch py-2 rounded-lg border-2 border-gray-200 text-gray-500 text-xs font-medium';
+  const inactiveCls = 'flex-1 btn-touch py-2.5 rounded-lg border-2 border-gray-200 text-gray-500 text-xs font-medium flex items-center justify-center gap-1';
   if (mode === 'increase') {
-    incBtn.className = 'flex-1 btn-touch py-2 rounded-lg border-2 border-green-500 bg-green-50 text-green-700 text-xs font-medium';
+    incBtn.className = 'flex-1 btn-touch py-2.5 rounded-lg border-2 border-green-500 bg-green-50 text-green-700 text-xs font-medium flex items-center justify-center gap-1';
     decBtn.className = inactiveCls;
     alertBtn.className = inactiveCls;
     label.textContent = '增加数量';
     qtyInput.min = 1; qtyInput.value = 1;
   } else if (mode === 'decrease') {
     incBtn.className = inactiveCls;
-    decBtn.className = 'flex-1 btn-touch py-2 rounded-lg border-2 border-red-500 bg-red-50 text-red-700 text-xs font-medium';
+    decBtn.className = 'flex-1 btn-touch py-2.5 rounded-lg border-2 border-red-500 bg-red-50 text-red-700 text-xs font-medium flex items-center justify-center gap-1';
     alertBtn.className = inactiveCls;
     label.textContent = '减少数量';
     qtyInput.min = 1; qtyInput.value = 1;
   } else {
     incBtn.className = inactiveCls;
     decBtn.className = inactiveCls;
-    alertBtn.className = 'flex-1 btn-touch py-2 rounded-lg border-2 border-orange-500 bg-orange-50 text-orange-700 text-xs font-medium';
+    alertBtn.className = 'flex-1 btn-touch py-2.5 rounded-lg border-2 border-orange-500 bg-orange-50 text-orange-700 text-xs font-medium flex items-center justify-center gap-1';
     label.textContent = '统一设置预警阈值';
     qtyInput.min = 0; qtyInput.value = 10;
     document.getElementById('btn-confirm-batch-stock').textContent = '确认设置';
