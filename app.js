@@ -507,6 +507,10 @@ async function feishuLogin() {
     }
     if (!currentUser.name && data.user.en_name) currentUser.name = data.user.en_name;
     if (!currentUser.name && data.user.mobile) currentUser.name = data.user.mobile;
+    // ALI 固定显示名，避免飞书返回"用户xxxxx"覆盖
+    if (feishuUid === '592631' || feishuUid === 'ALI_592631' || feishuUid === 'ou_dc1cda75f061ec9e607c2b78bd68f0f1') {
+      currentUser.name = 'ALI';
+    }
     currentRole = (feishuUid === '592631' || feishuUid === 'ALI_592631' || feishuUid === 'ou_dc1cda75f061ec9e607c2b78bd68f0f1') ? 'super_admin' : (data.user.role || 'employee');
     console.log('登录成功:', { name: currentUser.name, feishuUid, role: currentRole });
     try { await sb.rpc('upsert_profile', { p_feishu_user_id: feishuUid, p_name: currentUser.name || '未知用户', p_role: currentRole }); } catch (e) { console.warn('upsert_profile 失败', e); }
