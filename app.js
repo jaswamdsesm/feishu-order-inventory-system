@@ -842,7 +842,7 @@ async function saveProduct() {
   const shortName = document.getElementById('product-short-name').value.trim();
   const sku = document.getElementById('product-sku').value.trim();
   const stock = parseInt(document.getElementById('product-stock').value) || 0;
-  const alertVal = parseInt(document.getElementById('product-alert').value) || 10;
+  const alertVal = parseInt(document.getElementById('product-alert').value) ?? 10;
   const unit = document.getElementById('product-unit').value.trim() || '个';
   if (!name) { showToast('请填写产品名称', 'warning'); return; }
   //  复合唯一性预检：名称+简称+规格+单位 完全一致视为同一产品
