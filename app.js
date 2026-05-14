@@ -1851,18 +1851,32 @@ function setBatchStockMode(mode) {
   batchStockMode = mode;
   const incBtn = document.getElementById('bs-mode-inc');
   const decBtn = document.getElementById('bs-mode-dec');
+  const alertBtn = document.getElementById('bs-mode-alert');
   const qtyInput = document.getElementById('batch-stock-qty');
   const label = document.getElementById('bs-qty-label');
+  const inactiveCls = 'flex-1 btn-touch py-2 rounded-lg border-2 border-gray-200 text-gray-500 text-xs font-medium';
   if (mode === 'increase') {
-    incBtn.className = 'flex-1 btn-touch py-2 rounded-lg border-2 border-green-500 bg-green-50 text-green-700 text-sm font-medium';
-    decBtn.className = 'flex-1 btn-touch py-2 rounded-lg border-2 border-gray-200 text-gray-500 text-sm font-medium';
+    incBtn.className = 'flex-1 btn-touch py-2 rounded-lg border-2 border-green-500 bg-green-50 text-green-700 text-xs font-medium';
+    decBtn.className = inactiveCls;
+    alertBtn.className = inactiveCls;
     label.textContent = '增加数量';
-  } else {
-    incBtn.className = 'flex-1 btn-touch py-2 rounded-lg border-2 border-gray-200 text-gray-500 text-sm font-medium';
-    decBtn.className = 'flex-1 btn-touch py-2 rounded-lg border-2 border-red-500 bg-red-50 text-red-700 text-sm font-medium';
+    qtyInput.min = 1; qtyInput.value = 1;
+  } else if (mode === 'decrease') {
+    incBtn.className = inactiveCls;
+    decBtn.className = 'flex-1 btn-touch py-2 rounded-lg border-2 border-red-500 bg-red-50 text-red-700 text-xs font-medium';
+    alertBtn.className = inactiveCls;
     label.textContent = '减少数量';
+    qtyInput.min = 1; qtyInput.value = 1;
+  } else {
+    incBtn.className = inactiveCls;
+    decBtn.className = inactiveCls;
+    alertBtn.className = 'flex-1 btn-touch py-2 rounded-lg border-2 border-orange-500 bg-orange-50 text-orange-700 text-xs font-medium';
+    label.textContent = '统一设置预警阈值';
+    qtyInput.min = 0; qtyInput.value = 10;
+    document.getElementById('btn-confirm-batch-stock').textContent = '确认设置';
+  } else {
+    document.getElementById('btn-confirm-batch-stock').textContent = '确认调整';
   }
-  qtyInput.value = 1;
   renderBatchStockPreview();
 }
 
@@ -1882,28 +1896,43 @@ function openBatchStockModal() {
 function renderBatchStockPreview() {
   const products = window._batchStockProducts || [];
   const qty = parseInt(document.getElementById('batch-stock-qty').value) || 0;
-  if (products.length === 0 || qty <= 0) {
+  if (products.length === 0 || (batchStockMode !== 'alert' && qty <= 0) || (batchStockMode === 'alert' && qty < 0)) {
     document.getElementById('batch-stock-preview').classList.add('hidden');
     return;
   }
   const head = document.getElementById('batch-stock-head');
   const body = document.getElementById('batch-stock-body');
-  head.innerHTML = '<tr>' + ['产品名称', '规格', '单位', '当前库存', '调整数量', '调整后库存'].map(h => '<th class="px-2 py-1 text-left bg-gray-50">' + h + '</th>').join('') + '</tr>';
-  body.innerHTML = products.map(p => {
-    const actualQty = batchStockMode === 'increase' ? qty : -qty;
-    const newStock = (p.current_stock || 0) + actualQty;
-    const qtyClass = actualQty > 0 ? 'text-green-600' : 'text-red-600';
-    const qtyText = actualQty > 0 ? '+' + actualQty : '' + actualQty;
-    const newStockClass = newStock < 0 ? 'text-red-600' : (newStock <= p.min_stock_alert ? 'text-orange-600' : 'text-green-600');
-    return '<tr class="border-b border-gray-100">' +
-      '<td class="px-2 py-1 font-medium">' + esc(p.name) + '</td>' +
-      '<td class="px-2 py-1">' + esc(p.sku || '-') + '</td>' +
-      '<td class="px-2 py-1">' + esc(p.unit || '个') + '</td>' +
-      '<td class="px-2 py-1">' + (p.current_stock || 0) + '</td>' +
-      '<td class="px-2 py-1 font-bold ' + qtyClass + '">' + qtyText + '</td>' +
-      '<td class="px-2 py-1 font-bold ' + newStockClass + '">' + newStock + '</td>' +
-      '</tr>';
-  }).join('');
+  if (batchStockMode === 'alert') {
+    head.innerHTML = '<tr>' + ['产品名称', '规格', '单位', '当前库存', '当前阈值', '新阈值'].map(h => '<th class="px-2 py-1 text-left bg-gray-50">' + h + '</th>').join('') + '</tr>';
+    body.innerHTML = products.map(p => {
+      const oldAlert = p.min_stock_alert || 0;
+      return '<tr class="border-b border-gray-100">' +
+        '<td class="px-2 py-1 font-medium">' + esc(p.name) + '</td>' +
+        '<td class="px-2 py-1">' + esc(p.sku || '-') + '</td>' +
+        '<td class="px-2 py-1">' + esc(p.unit || '个') + '</td>' +
+        '<td class="px-2 py-1">' + (p.current_stock || 0) + '</td>' +
+        '<td class="px-2 py-1 text-gray-400">' + oldAlert + '</td>' +
+        '<td class="px-2 py-1 font-bold text-orange-600">' + qty + '</td>' +
+        '</tr>';
+    }).join('');
+  } else {
+    head.innerHTML = '<tr>' + ['产品名称', '规格', '单位', '当前库存', '调整数量', '调整后库存'].map(h => '<th class="px-2 py-1 text-left bg-gray-50">' + h + '</th>').join('') + '</tr>';
+    body.innerHTML = products.map(p => {
+      const actualQty = batchStockMode === 'increase' ? qty : -qty;
+      const newStock = (p.current_stock || 0) + actualQty;
+      const qtyClass = actualQty > 0 ? 'text-green-600' : 'text-red-600';
+      const qtyText = actualQty > 0 ? '+' + actualQty : '' + actualQty;
+      const newStockClass = newStock < 0 ? 'text-red-600' : (newStock <= p.min_stock_alert ? 'text-orange-600' : 'text-green-600');
+      return '<tr class="border-b border-gray-100">' +
+        '<td class="px-2 py-1 font-medium">' + esc(p.name) + '</td>' +
+        '<td class="px-2 py-1">' + esc(p.sku || '-') + '</td>' +
+        '<td class="px-2 py-1">' + esc(p.unit || '个') + '</td>' +
+        '<td class="px-2 py-1">' + (p.current_stock || 0) + '</td>' +
+        '<td class="px-2 py-1 font-bold ' + qtyClass + '">' + qtyText + '</td>' +
+        '<td class="px-2 py-1 font-bold ' + newStockClass + '">' + newStock + '</td>' +
+        '</tr>';
+    }).join('');
+  }
   document.getElementById('batch-stock-count').textContent = '共 ' + products.length + ' 个产品';
   document.getElementById('batch-stock-preview').classList.remove('hidden');
 }
@@ -1911,26 +1940,39 @@ function renderBatchStockPreview() {
 async function saveBatchStock() {
   const products = window._batchStockProducts || [];
   const qty = parseInt(document.getElementById('batch-stock-qty').value) || 0;
-  if (qty <= 0) { showToast('请输入有效的调整数量', 'warning'); return; }
-  const actualQty = batchStockMode === 'increase' ? qty : -qty;
   const btn = document.getElementById('btn-confirm-batch-stock');
   btn.disabled = true; btn.textContent = '调整中…';
   let ok = 0, fail = 0;
-  for (const p of products) {
-    try {
-      const newStock = (p.current_stock || 0) + actualQty;
-      const changeType = actualQty > 0 ? 'restock' : 'adjust';
-      const remark = actualQty > 0 ? '批量补货' : '批量减库存';
-      const { error } = await sb.rpc('adjust_inventory', {
-        p_product_id: p.id,
-        p_change_type: changeType,
-        p_quantity: Math.abs(actualQty),
-        p_remark: remark,
-        p_feishu_user_id: feishuUid
-      });
-      if (error) throw error;
-      ok++;
-    } catch (e) { fail++; console.error('批量调整失败:', p.name, e.message); showToast(p.name + ' 调整失败:' + e.message, 'error'); }
+
+  if (batchStockMode === 'alert') {
+    // 预警阈值模式：直接更新 products 表的 min_stock_alert
+    for (const p of products) {
+      try {
+        const { error } = await sb.from('products').update({ min_stock_alert: qty }).eq('id', p.id);
+        if (error) throw error;
+        ok++;
+      } catch (e) { fail++; console.error('批量调整阈值失败:', p.name, e.message); showToast(p.name + ' 调整失败:' + e.message, 'error'); }
+    }
+  } else {
+    // 库存增减模式
+    if (qty <= 0) { showToast('请输入有效的调整数量', 'warning'); btn.disabled = false; btn.textContent = '确认调整'; return; }
+    const actualQty = batchStockMode === 'increase' ? qty : -qty;
+    for (const p of products) {
+      try {
+        const newStock = (p.current_stock || 0) + actualQty;
+        const changeType = actualQty > 0 ? 'restock' : 'adjust';
+        const remark = actualQty > 0 ? '批量补货' : '批量减库存';
+        const { error } = await sb.rpc('adjust_inventory', {
+          p_product_id: p.id,
+          p_change_type: changeType,
+          p_quantity: Math.abs(actualQty),
+          p_remark: remark,
+          p_feishu_user_id: feishuUid
+        });
+        if (error) throw error;
+        ok++;
+      } catch (e) { fail++; console.error('批量调整失败:', p.name, e.message); showToast(p.name + ' 调整失败:' + e.message, 'error'); }
+    }
   }
   closeModal('modal-batch-stock');
   document.querySelectorAll('.inv-chk:checked').forEach(c => { c.checked = false; });
@@ -1938,6 +1980,7 @@ async function saveBatchStock() {
   if (selAll) selAll.checked = false;
   await Promise.all([loadProducts(), loadInventoryLogs()]);
   renderInventory();
+  const modeText = batchStockMode === 'alert' ? '预警阈值' : '库存';
   let msg = '调整完成：成功 ' + ok + ' 条';
   if (fail) msg += '，失败 ' + fail + ' 条';
   showToast(msg, fail ? 'warning' : 'success');
