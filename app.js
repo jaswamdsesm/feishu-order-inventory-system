@@ -578,7 +578,7 @@ async function feishuLogin() {
     currentRole = dbRole === 'super_admin' ? 'super_admin' : (superUids.includes(feishuUid) ? 'super_admin' : (dbRole || 'employee'));
     debugLog('角色: db=' + dbRole + ' uid=' + feishuUid + ' → ' + currentRole, 'ok');
     console.log('登录成功:', { name: currentUser.name, feishuUid, role: currentRole });
-    try { await sb.rpc('upsert_profile', { p_feishu_user_id: feishuUid, p_name: currentUser.name || '未知用户', p_role: currentRole }); } catch (e) { console.warn('upsert_profile 失败', e); }
+    // 不再在前端调用 upsert_profile，Edge Function 已处理名字保护逻辑
     hideLoading();
     applyRole();
     switchPage('dashboard');
