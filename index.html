@@ -184,6 +184,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
           <!-- 国家筛选 -->
           <input type="text" id="order-country-filter" placeholder="国家筛选…" oninput="renderOrders()" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[90px]"/>
           <!-- 日期筛选 -->
+          <button onclick="setThisMonth()" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white hover:bg-gray-50 transition-colors whitespace-nowrap text-gray-600">本月</button>
           <div class="relative" id="wrap-date-from">
             <input type="text" id="order-date-from" readonly placeholder="起始日期" onfocus="openDatePicker('order-date-from')" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer w-[120px]"/>
           </div>
