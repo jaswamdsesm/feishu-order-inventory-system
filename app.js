@@ -705,7 +705,7 @@ async function loadDashboardData() {
   const todayOrders = allOrders.filter(o => (o.created_at || '').startsWith(today));
   document.getElementById('dash-today-orders').textContent = todayOrders.length;
   const al = document.getElementById('dash-alert-list');
-  if (alerts.length === 0) al.innerHTML = '<p class="text-sm text-gray-400">暂无预警产品 🎉</p>';
+  if (alerts.length === 0) al.innerHTML = '<p class="text-sm text-gray-400">暂无预警产品</p>';
   else al.innerHTML = alerts.map(p => `<div class="flex items-center justify-between py-2 border-b border-gray-50"><span class="text-sm font-medium text-red-600">${esc(p.name)}</span><span class="text-xs text-red-500">库存 ${p.current_stock} ${p.unit || '个'}（阈值 ${p.min_stock_alert}）</span></div>`).join('');
   const rl = document.getElementById('dash-recent-orders');
   const recent = allOrders.slice(0, 10);
@@ -776,7 +776,7 @@ async function saveProduct() {
   const alertVal = parseInt(document.getElementById('product-alert').value) || 10;
   const unit = document.getElementById('product-unit').value.trim() || '个';
   if (!name) { showToast('请填写产品名称', 'warning'); return; }
-  // 🔑 复合唯一性预检：名称+简称+规格+单位 完全一致视为同一产品
+  //  复合唯一性预检：名称+简称+规格+单位 完全一致视为同一产品
   const conflict = allProducts.find(p =>
     (p.name || '') === name &&
     (p.short_name || '') === shortName &&
@@ -998,11 +998,11 @@ function renderOrders() {
     const sc = { pending: 'border-yellow-300 bg-yellow-50', shipped: 'border-blue-300 bg-blue-50', completed: 'border-green-300 bg-green-50', cancelled: 'border-gray-200 bg-gray-50' };
     const sc2 = { pending: 'text-yellow-600', shipped: 'text-blue-600', completed: 'text-green-600', cancelled: 'text-gray-400' };
     const canShip = o.status === 'pending' && isAdmin;
-    const shipBtn = canShip ? `<button onclick="openShipModal('${o.id}')" class="text-xs text-green-600 hover:underline mr-2">🚚 发货</button>` : '';
-    const trackHtml = o.tracking_no ? `<p class="text-xs text-green-600">📦 单号：${esc(o.tracking_no)}</p>` : '';
+    const shipBtn = canShip ? `<button onclick="openShipModal('${o.id}')" class="text-xs text-green-600 hover:underline mr-2"><svg class="w-3.5 h-3.5 inline-block mr-0.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.75a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h-6m9 0h2.25a1.125 1.125 0 001.125-1.125V14.25m0 0H21M3 14.25V6.75A2.25 2.25 0 015.25 4.5h13.5A2.25 2.25 0 0121 6.75v7.5M3 14.25H21"/></svg>发货</button>` : '';
+    const trackHtml = o.tracking_no ? `<p class="text-xs text-green-600"><svg class="w-3.5 h-3.5 inline-block mr-0.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>单号：${esc(o.tracking_no)}</p>` : '';
     const canEdit = isSuper && !['shipped','completed'].includes(o.status);
     const btnHtml = canEdit ? `<button onclick="openOrderModal('${o.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteOrder('${o.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
-    const deliveredBtn = (o.status === 'shipped' && isAdmin) ? `<button onclick="markDelivered('${o.id}')" class="text-xs text-blue-600 hover:underline mr-2">📦 已送达</button>` : '';
+    const deliveredBtn = (o.status === 'shipped' && isAdmin) ? `<button onclick="markDelivered('${o.id}')" class="text-xs text-blue-600 hover:underline mr-2"><svg class="w-3.5 h-3.5 inline-block mr-0.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>已送达</button>` : '';
     // 直接读数据库字段，不再反推；字段存在且不为 null 就显示（允许显示 0.00）
     const goodsCNYStr   = (o.goods_cny != null && o.goods_cny !== '') ? ` = ¥${parseFloat(o.goods_cny).toFixed(2)}` : '';
     const shipCNYStr    = (o.shipping_cny != null && o.shipping_cny !== '') ? ` = ¥${parseFloat(o.shipping_cny).toFixed(2)}` : '';
@@ -1019,13 +1019,13 @@ function renderOrders() {
         <span class="text-sm text-gray-700 font-semibold">${(o.created_at || '').slice(0, 10)}</span>
       </div>
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mb-3">
-        <span>👤 ${esc(o.customer_name)}</span>
-        <span>📞 ${phoneHtml || '—'}</span>
-        ${o.country ? `<span>🌍 ${esc(o.country)}</span>` : ''}
+        <span><svg class="w-3.5 h-3.5 inline-block mr-0.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>${esc(o.customer_name)}</span>
+        <span><svg class="w-3.5 h-3.5 inline-block mr-0.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>${phoneHtml || '—'}</span>
+        ${o.country ? `<span><svg class="w-3.5 h-3.5 inline-block mr-0.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"/></svg>${esc(o.country)}</span>` : ''}
         ${o.payment_method ? `<span class="text-purple-500">${PAYMENT_LABELS[o.payment_method]}</span>` : ''}
         ${o.owner_name ? `<span class="text-blue-400">归属：${esc(o.owner_name)}</span>` : ''}
       </div>
-      ${o.customer_address ? `<div class="text-xs text-gray-400 mb-2 truncate">📍 ${addrHtml}</div>` : ''}
+      ${o.customer_address ? `<div class="text-xs text-gray-400 mb-2 truncate"><svg class="w-3.5 h-3.5 inline-block mr-0.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>${addrHtml}</div>` : ''}
       ${trackHtml}
       <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 overflow-hidden">${items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ` ${esc(p.sku)}` : ''; return `<div class="text-xs min-w-0"><span class="truncate">${esc(p ? p.name : '未知产品')}${spec} × ${i.quantity}</span></div>`; }).join('')}</div>
       <div class="flex flex-wrap items-center justify-between mt-3 pt-2 border-t border-gray-100 gap-1">
@@ -2323,7 +2323,7 @@ function renderQuoteResult(lines) {
   el.innerHTML = lines.map(line => {
     if (line.startsWith('___')) return '<hr class="my-2 border-gray-200">';
     if (line.startsWith('**')) return `<div class="text-xs font-bold text-gray-500 mt-3">${esc(line.replace(/\*\*/g, ''))}</div>`;
-    if (line.startsWith('💡')) return `<div class="text-xs text-blue-500 mt-1">${esc(line.slice(1).trim())}</div>`;
+    if (line.startsWith('[tip]')) return `<div class="text-xs text-blue-500 mt-1">${esc(line.slice(1).trim())}</div>`;
     return `<div class="text-sm font-mono whitespace-pre-line">${esc(line)}</div>`;
   }).join('');
   el.scrollTop = 0;
@@ -2420,7 +2420,7 @@ function updateSummary(el, currency, rate) {
   const summaryDiv = document.createElement('div');
   summaryDiv.className = 'quote-summary mt-4 pt-3 border-t-2 border-green-200 bg-green-50 rounded-lg p-3';
   summaryDiv.innerHTML = `
-    <div class="font-bold text-sm text-green-700 mb-1">📊 货物价格汇总</div>
+    <div class="font-bold text-sm text-green-700 mb-1"><svg class="w-4 h-4 inline-block mr-1 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>货物价格汇总</div>
     <div class="text-xs text-gray-500 mb-1">共 ${count} 项</div>
     <div class="text-base font-bold text-green-700">${sym} ${displayTotal}</div>
   `;
@@ -2657,7 +2657,7 @@ function parseQuoteInput(input) {
       lines.push(`未找到产品：${q}`);
       const recs = recommendSimilar(searchInput);
       if (recs.length > 0) {
-        lines.push(`💡 你可能想找：`);
+        lines.push(`[tip] 你可能想找：`);
         recs.forEach(p => { lines.push(`${p.name}：${p.code} ${p.spec} USD${p.price}`); });
       }
     } else if (hits.length === 1) {
@@ -2857,7 +2857,7 @@ let shippingTemplates = [];
 let shippingTemplatesLoaded = false;
 const SHIP_TPL_KEY = 'oi_shipping_templates';
 const CURRENCY_SYMBOLS = { USD: '$', AUD: 'A$', CNY: '¥', EUR: '€', GBP: '£' };
-const PAYMENT_LABELS = { bank_transfer: '🏦 银行转账', paypal: '🅿️ PayPal', wise: '💚 Wise', crypto: '🔗 加密货币' };
+const PAYMENT_LABELS = { bank_transfer: '银行转账', paypal: 'PayPal', wise: 'Wise', crypto: '加密货币' };
 const CURRENCY_FULL = { USD: 'USD 美元', EUR: 'EUR 欧元', AUD: 'AUD 澳元', CAD: 'CAD 加元' };
 function curSym(c) { return CURRENCY_SYMBOLS[c] || c + ' '; }
 
