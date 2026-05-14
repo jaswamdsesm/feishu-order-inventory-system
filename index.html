@@ -137,8 +137,8 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
         <div class="bg-white rounded-2xl p-5 border border-gray-100"><p class="text-xs text-gray-400 mb-1">今日订单</p><p id="dash-today-orders" class="text-2xl font-bold text-green-600">-</p></div>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="bg-white rounded-2xl p-5 border border-gray-100"><h3 class="font-bold mb-3">⚠️ 库存预警</h3><div id="dash-alert-list" class="space-y-2 max-h-64 overflow-y-auto"><p class="text-sm text-gray-400">加载中…</p></div></div>
-        <div class="bg-white rounded-2xl p-5 border border-gray-100"><h3 class="font-bold mb-3">📋 最近订单</h3><div id="dash-recent-orders" class="space-y-2 max-h-64 overflow-y-auto"><p class="text-sm text-gray-400">加载中…</p></div></div>
+        <div class="bg-white rounded-2xl p-5 border border-gray-100"><h3 class="font-bold mb-3 flex items-center gap-2"><svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.344 3.354 1.86 3.8 1.425.438 2.915.7 4.445.7 1.53 0 3.02-.262 4.445-.7 1.517-.445 2.727-2.3 1.86-3.8m-12.208 0A1.76 1.76 0 0112 15.75c.414 0 .813-.144 1.127-.407m-12.208 0A1.76 1.76 0 0112 15.75m0 0a2.25 2.25 0 110 4.5m0-4.5a2.25 2.25 0 100 4.5m0-8.26v-.01"/></svg>库存预警</h3><div id="dash-alert-list" class="space-y-2 max-h-64 overflow-y-auto"><p class="text-sm text-gray-400">加载中…</p></div></div>
+        <div class="bg-white rounded-2xl p-5 border border-gray-100"><h3 class="font-bold mb-3 flex items-center gap-2"><svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>最近订单</h3><div id="dash-recent-orders" class="space-y-2 max-h-64 overflow-y-auto"><p class="text-sm text-gray-400">加载中…</p></div></div>
       </div>
     </div>
 
@@ -498,9 +498,9 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
         <select id="order-owner-select" class="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm bg-white">
           <option value="">归属销售（选填）</option>
         </select>
-        <button onclick="autoCalcShipping()" class="btn-touch whitespace-nowrap px-3 py-2.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 text-xs font-bold">📦 自动算运费</button>
+        <button onclick="autoCalcShipping()" class="btn-touch whitespace-nowrap px-3 py-2.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 text-xs font-bold"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.75a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h-6m9 0h2.25a1.125 1.125 0 001.125-1.125V14.25m0 0H21M3 14.25V6.75A2.25 2.25 0 015.25 4.5h13.5A2.25 2.25 0 0121 6.75v7.5M3 14.25H21"/></svg>自动算运费</button>
       </div></div>
-    <div><div class="flex items-center justify-between mb-2"><p class="text-xs text-gray-500 font-medium">产品明细</p><div class="flex gap-2"><button onclick="autoQuoteOrder()" class="text-xs text-green-600 hover:text-green-800 font-bold">⚡ 自动报价</button><button onclick="addOrderItemRow()" class="text-xs text-blue-500 hover:text-blue-700 font-medium">+ 添加产品</button></div></div><div id="order-items-container" class="space-y-2"></div></div>
+    <div><div class="flex items-center justify-between mb-2"><p class="text-xs text-gray-500 font-medium">产品明细</p><div class="flex gap-2"><button onclick="autoQuoteOrder()" class="text-xs text-green-600 hover:text-green-800 font-bold"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>自动报价</button><button onclick="addOrderItemRow()" class="text-xs text-blue-500 hover:text-blue-700 font-medium">+ 添加产品</button></div></div><div id="order-items-container" class="space-y-2"></div></div>
     <div id="order-status-row" class="hidden"><label class="block text-xs text-gray-500 mb-1">订单状态</label><select id="order-status" onchange="toggleTrackingRow()" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none"><option value="pending">待处理</option><option value="shipped">已发货</option><option value="completed">已完成</option><option value="cancelled">已取消</option></select></div>
     <div id="order-tracking-row" class="hidden"><label class="block text-xs text-gray-500 mb-1">快递单号</label><input id="order-tracking-no" type="text" placeholder="快递单号" class="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
     <div><label class="block text-xs text-gray-500 mb-1">备注</label><textarea id="order-remark" rows="2" placeholder="选填" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm resize-none"></textarea></div>
@@ -510,8 +510,8 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
       <div class="flex justify-between items-center">
         <span class="text-xs text-gray-600">结算货币</span>
         <select id="order-settlement-currency" onchange="onSettlementCurrencyChange()" class="px-2 py-1 rounded border border-gray-200 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
-          <option value="USD">💵 USD 美元</option>
-          <option value="EUR">💶 EUR 欧元</option>
+          <option value="USD">USD 美元</option>
+          <option value="EUR">EUR 欧元</option>
           <option value="AUD">🇦🇺 AUD 澳元</option>
           <option value="CAD">🇨🇦 CAD 加元</option>
         </select>
@@ -527,10 +527,10 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
         <span class="text-xs text-gray-600">付款方式</span>
         <select id="order-payment-method" onchange="recalcOrderTotal()" class="px-2 py-1 rounded border border-gray-200 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
           <option value="">请选择</option>
-          <option value="bank_transfer">🏦 银行转账 (2.5%)</option>
-          <option value="paypal">🅿️ PayPal (4.4%+$0.30)</option>
-          <option value="wise">💚 Wise (2.5%)</option>
-          <option value="crypto">🔗 加密货币 (2.5%)</option>
+          <option value="bank_transfer">银行转账 (2.5%)</option>
+          <option value="paypal">PayPal (4.4%+$0.30)</option>
+          <option value="wise">Wise (2.5%)</option>
+          <option value="crypto">加密货币 (2.5%)</option>
         </select>
       </div>
       <div class="flex justify-between items-center"><span class="text-xs text-gray-600">手续费<span class="text-gray-400 ml-1">（从利润扣除）</span></span><span id="order-handling-fee" class="text-sm font-bold text-red-500">$0.00</span></div>
@@ -644,8 +644,8 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
     <div>
       <label class="block text-xs text-gray-500 mb-1">调整方式</label>
       <div class="flex gap-2">
-        <button onclick="setBatchStockMode('increase')" id="bs-mode-inc" class="flex-1 btn-touch py-2 rounded-lg border-2 border-green-500 bg-green-50 text-green-700 text-sm font-medium">➕ 增加库存</button>
-        <button onclick="setBatchStockMode('decrease')" id="bs-mode-dec" class="flex-1 btn-touch py-2 rounded-lg border-2 border-gray-200 text-gray-500 text-sm font-medium">➖ 减少库存</button>
+        <button onclick="setBatchStockMode('increase')" id="bs-mode-inc" class="flex-1 btn-touch py-2 rounded-lg border-2 border-green-500 bg-green-50 text-green-700 text-sm font-medium"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg> 增加库存</button>
+        <button onclick="setBatchStockMode('decrease')" id="bs-mode-dec" class="flex-1 btn-touch py-2 rounded-lg border-2 border-gray-200 text-gray-500 text-sm font-medium"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15"/></svg> 减少库存</button>
       </div>
     </div>
     <div>
