@@ -1943,17 +1943,19 @@ async function saveBatchStock() {
   let ok = 0, fail = 0;
 
   if (batchStockMode === 'alert') {
-    // 预警阈值模式：通过 upsert_product RPC 更新（SECURITY DEFINER 绕过 RLS）
-    for (const p of products) {
-      try {
-        const { error } = await sb.rpc('upsert_product', {
-          p_id: p.id, p_name: p.name, p_short_name: p.short_name || null,
-          p_sku: p.sku || null, p_stock: p.current_stock || 0,
-          p_alert: qty, p_unit: p.unit || '个', p_feishu_user_id: feishuUid
-        });
-        if (error) throw error;
-        ok++;
-      } catch (e) { fail++; console.error('批量调整阈值失败:', p.name, e.message); showToast(p.name + ' 调整失败:' + e.message, 'error'); }
+    // 预警阈值模式：通过 batch_update_alert RPC 一次批量更新（SECURITY DEFINER 绕过 RLS）
+    try {
+      const { data, error } = await sb.rpc('batch_update_alert', {
+        p_product_ids: products.map(p => p.id),
+        p_alert: qty,
+        p_feishu_user_id: feishuUid
+      });
+      if (error) throw error;
+      ok = data || products.length;
+    } catch (e) {
+      fail = products.length;
+      console.error('批量调整阈值失败:', e.message);
+      showToast('批量调整阈值失败: ' + e.message, 'error');
     }
   } else {
     // 库存增减模式
