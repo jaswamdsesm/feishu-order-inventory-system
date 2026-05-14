@@ -1943,7 +1943,7 @@ async function saveBatchStock() {
   let ok = 0, fail = 0;
 
   if (batchStockMode === 'alert') {
-    // 预警阈值模式：通过 RPC 更新（绕过 RLS）
+    // 预警阈值模式：通过 upsert_product RPC 更新（SECURITY DEFINER 绕过 RLS）
     for (const p of products) {
       try {
         const { error } = await sb.rpc('upsert_product', {
