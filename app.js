@@ -967,6 +967,7 @@ function renderOrders() {
   });
   const phoneHidden = isPhoneHidden();
   const isAdmin = ['super_admin', 'admin'].includes(currentRole);
+  const isSuper = currentRole === 'super_admin';
   if (filtered.length === 0) { document.getElementById('orders-list').innerHTML = ''; document.getElementById('orders-empty').classList.remove('hidden'); updateOrdersSummary([]); return; }
   document.getElementById('orders-empty').classList.add('hidden');
   document.getElementById('orders-list').innerHTML = filtered.map(o => {
@@ -988,7 +989,7 @@ function renderOrders() {
     const canShip = o.status === 'pending' && isAdmin;
     const shipBtn = canShip ? `<button onclick="openShipModal('${o.id}')" class="text-xs text-green-600 hover:underline mr-2">🚚 发货</button>` : '';
     const trackHtml = o.tracking_no ? `<p class="text-xs text-green-600">📦 单号：${esc(o.tracking_no)}</p>` : '';
-    const canEdit = isAdmin && !['shipped','completed'].includes(o.status);
+    const canEdit = isSuper && !['shipped','completed'].includes(o.status);
     const btnHtml = canEdit ? `<button onclick="openOrderModal('${o.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteOrder('${o.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
     const deliveredBtn = (o.status === 'shipped' && isAdmin) ? `<button onclick="markDelivered('${o.id}')" class="text-xs text-blue-600 hover:underline mr-2">📦 已送达</button>` : '';
     // 直接读数据库字段，不再反推；字段存在且不为 null 就显示（允许显示 0.00）
