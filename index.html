@@ -71,6 +71,15 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style><div id="feishu-loading" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#667eea,#764ba2)"><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:120px;text-align:center"><div style="display:block;width:40px;height:40px;margin:0 auto 16px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite"></div><p style="color:#fff;font-size:18px;font-weight:500;margin:0">正在登录…</p></div></div>
 
 <!-- 整体 flex 布局容器 -->
+
+<!-- 调试面板（登录失败时可见，显示详细日志） -->
+<div id="debug-panel" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:10000;background:#1e293b;max-height:45vh;overflow:hidden;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#0f172a;border-bottom:1px solid #334155;">
+    <span style="color:#f59e0b;font-size:12px;font-weight:600;">调试日志</span>
+    <button onclick="document.getElementById('debug-panel').style.display='none'" style="color:#94a3b8;background:none;border:none;font-size:16px;cursor:pointer;">✕</button>
+  </div>
+  <div id="debug-log" style="padding:8px 12px;overflow-y:auto;max-height:calc(45vh - 32px);"></div>
+</div>
 <div class="flex min-h-screen">
 
   <!-- 侧边栏：移动端 fixed 浮层，桌面端 fixed 贴左 -->
@@ -599,7 +608,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
 
 <script async src="https://lf-scm-cn.feishucdn.com/lark/op/h5-js-sdk-1.5.44.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=20260514b9"></script>
+<script src="app.js?v=20260514b10"></script>
 
 <!-- 批量导入产品弹窗 -->
 <div id="modal-batch-product" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/30" style="z-index:60">
