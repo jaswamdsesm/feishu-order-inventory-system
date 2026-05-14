@@ -1944,15 +1944,18 @@ async function saveBatchStock() {
 
   if (batchStockMode === 'alert') {
     // 预警阈值模式：通过 batch_update_alert RPC 一次批量更新（SECURITY DEFINER 绕过 RLS）
+    console.time('batch_update_alert');
     try {
       const { data, error } = await sb.rpc('batch_update_alert', {
         p_product_ids: products.map(p => p.id),
         p_alert: qty,
         p_feishu_user_id: feishuUid
       });
+      console.timeEnd('batch_update_alert');
       if (error) throw error;
       ok = data || products.length;
     } catch (e) {
+      console.timeEnd('batch_update_alert');
       fail = products.length;
       console.error('批量调整阈值失败:', e.message);
       showToast('批量调整阈值失败: ' + e.message, 'error');
