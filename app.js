@@ -572,7 +572,11 @@ async function feishuLogin() {
     }
     if (!currentUser.name && data.user.en_name) currentUser.name = data.user.en_name;
     if (!currentUser.name && data.user.mobile) currentUser.name = data.user.mobile;
-    currentRole = (feishuUid === '592631' || feishuUid === 'ALI_592631' || feishuUid === 'ou_dc1cda75f061ec9e607c2b78bd68f0f1') ? 'super_admin' : (data.user.role || 'employee');
+    // 优先用数据库 role，硬编码兜底
+    const dbRole = data.user.role || '';
+    const superUids = ['592631', 'ALI_592631', 'ou_dc1cda75f061ec9e607c2b78bd68f0f1'];
+    currentRole = dbRole === 'super_admin' ? 'super_admin' : (superUids.includes(feishuUid) ? 'super_admin' : (dbRole || 'employee'));
+    debugLog('角色: db=' + dbRole + ' uid=' + feishuUid + ' → ' + currentRole, 'ok');
     console.log('登录成功:', { name: currentUser.name, feishuUid, role: currentRole });
     try { await sb.rpc('upsert_profile', { p_feishu_user_id: feishuUid, p_name: currentUser.name || '未知用户', p_role: currentRole }); } catch (e) { console.warn('upsert_profile 失败', e); }
     hideLoading();
