@@ -1943,10 +1943,14 @@ async function saveBatchStock() {
   let ok = 0, fail = 0;
 
   if (batchStockMode === 'alert') {
-    // 预警阈值模式：直接更新 products 表的 min_stock_alert
+    // 预警阈值模式：通过 RPC 更新（绕过 RLS）
     for (const p of products) {
       try {
-        const { error } = await sb.from('products').update({ min_stock_alert: qty }).eq('id', p.id);
+        const { error } = await sb.rpc('upsert_product', {
+          p_id: p.id, p_name: p.name, p_short_name: p.short_name || null,
+          p_sku: p.sku || null, p_stock: p.current_stock || 0,
+          p_alert: qty, p_unit: p.unit || '个', p_feishu_user_id: feishuUid
+        });
         if (error) throw error;
         ok++;
       } catch (e) { fail++; console.error('批量调整阈值失败:', p.name, e.message); showToast(p.name + ' 调整失败:' + e.message, 'error'); }
