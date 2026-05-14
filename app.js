@@ -1982,8 +1982,15 @@ async function saveBatchStock() {
   document.querySelectorAll('.inv-chk:checked').forEach(c => { c.checked = false; });
   const selAll = document.getElementById('inv-select-all');
   if (selAll) selAll.checked = false;
-  await Promise.all([loadProducts(), loadInventoryLogs()]);
-  renderInventory();
+  if (batchStockMode === 'alert') {
+    // 阈值调整不产生日志，直接在内存中更新，无需重新查询
+    const updatedIds = new Set(products.map(p => p.id));
+    allProducts.forEach(p => { if (updatedIds.has(p.id)) p.min_stock_alert = qty; });
+    renderInventory();
+  } else {
+    await Promise.all([loadProducts(), loadInventoryLogs()]);
+    renderInventory();
+  }
   const modeText = batchStockMode === 'alert' ? '预警阈值' : '库存';
   let msg = '调整完成：成功 ' + ok + ' 条';
   if (fail) msg += '，失败 ' + fail + ' 条';
