@@ -830,6 +830,17 @@ async function deleteProduct(id) {
 let _dpState = { targetId: null, viewYear: 0, viewMonth: 0 };
 const _dpCallbacks = { 'order-date-from': () => renderOrders(), 'order-date-to': () => renderOrders(), 'order-date': () => {} };
 
+function setThisMonth() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  const firstDay = `${y}-${String(m).padStart(2, '0')}-01`;
+  const lastDay = `${y}-${String(m).padStart(2, '0')}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
+  document.getElementById('order-date-from').value = firstDay;
+  document.getElementById('order-date-to').value = lastDay;
+  renderOrders();
+}
+
 function openDatePicker(inputId) {
   closeDatePicker();
   const input = document.getElementById(inputId);
@@ -1366,7 +1377,8 @@ async function saveOrder() {
       p_total_cny: parseFloat(totalCNY.toFixed(2)),
       p_goods_cny: parseFloat(goodsCNY.toFixed(2)),
       p_shipping_cny: parseFloat(shippingCNY.toFixed(2)),
-      p_handling_cny: parseFloat(handlingCNY.toFixed(2))
+      p_handling_cny: parseFloat(handlingCNY.toFixed(2)),
+      p_owner_name: ownerName || null
     });
     if (error) throw error;
     closeModal('modal-order');
