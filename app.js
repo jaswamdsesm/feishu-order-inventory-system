@@ -497,20 +497,17 @@ async function feishuLogin() {
     // 401 自动重试：如果飞书 code 已失效，重新获取一次
     if (resp.status === 401 && !alreadyRetried && window.tt && window.tt.requestAuthCode) {
       console.warn('飞书登录 401，code 可能已失效，自动重新获取...');
-      try {
-        code = await new Promise((resolve, reject) => {
-          tt.requestAuthCode({ appId: FEISHU_APP_ID, success: (res) => resolve(res.code), fail: (err) => reject(new Error('重试 requestAuthCode 失败')) });
-        });
-        resp = await fetch('https://pvrfqnffygusujsnxsct.functions.supabase.co/feishu-login', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, app_id: FEISHU_APP_ID })
-        });
-      } catch (retryErr) {
-        console.error('401 重试失败:', retryErr);
-      }
+      sessionStorage.setItem(retryKey, '1');
+      code = await new Promise((resolve, reject) => {
+        tt.requestAuthCode({ appId: FEISHU_APP_ID, success: (res) => resolve(res.code), fail: (err) => reject(new Error('重试 requestAuthCode 失败')) });
+      });
+      resp = await fetch('https://pvrfqnffygusujsnxsct.functions.supabase.co/feishu-login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, app_id: FEISHU_APP_ID })
+      });
     }
+    if (!resp.ok) { sessionStorage.removeItem(retryKey); const errData = await resp.json().catch(() => null); throw new Error('飞书登录失败(status:' + resp.status + ')' + (errData?.error ? ': ' + errData.error : '')); }
     sessionStorage.removeItem(retryKey);
-    if (!resp.ok) { const errData = await resp.json().catch(() => null); throw new Error('飞书登录失败(status:' + resp.status + ')' + (errData?.error ? ': ' + errData.error : '')); }
     const data = await resp.json();
     if (!data.success) throw new Error(data.error || '飞书登录失败');
     currentUser = data.user;
