@@ -73,8 +73,8 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
 <!-- 整体 flex 布局容器 -->
 <div class="flex min-h-screen">
 
-  <!-- 侧边栏：移动端 fixed 浮层，桌面端 static 融入文档流 -->
-  <aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-56 bg-white border-r border-gray-100 flex flex-col -translate-x-full md:static md:translate-x-0 md:z-30">
+  <!-- 侧边栏：移动端 fixed 浮层，桌面端 fixed 贴左 -->
+  <aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-56 bg-white border-r border-gray-100 flex flex-col -translate-x-full md:translate-x-0 md:z-30">
     <div class="p-5 border-b border-gray-100 flex items-center gap-3">
       <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white font-bold text-[10px]">INV</div>
       <div><p class="font-bold text-sm">库存订单管理系统</p><p class="text-[10px] text-gray-400">FZ-INV</p></div>
@@ -108,18 +108,15 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
     <div class="p-4 border-t border-gray-100">
       <div class="flex items-center gap-3 mb-3"><div id="sidebar-avatar" class="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm"></div>
         <div class="flex-1 min-w-0"><p id="sidebar-user-name" class="text-sm font-medium truncate"></p><p id="sidebar-user-role" class="text-[10px] text-gray-400"></p></div></div>
-      <button onclick="toggleDarkMode()" class="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 transition-colors mb-2"><span id="dark-mode-icon">🌙</span> <span id="dark-mode-text">夜间模式</span></button>
-      <button onclick="feishuLogout()" class="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-red-200 text-xs text-red-500 hover:bg-red-50 transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/></svg>
-        退出登录</button>
+      <button onclick="toggleDarkMode()" class="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 transition-colors"><span id="dark-mode-icon">🌙</span> <span id="dark-mode-text">夜间模式</span></button>
     </div>
   </aside>
 
   <!-- 移动端侧边栏遮罩 -->
   <div id="sidebar-overlay" class="sidebar-overlay fixed inset-0 hidden md:hidden" onclick="toggleSidebar()"></div>
 
-  <!-- 主内容区：flex-1 自动撑满剩余宽度 -->
-  <div id="main-content" class="flex-1 min-w-0 flex flex-col">
+  <!-- 主内容区：桌面端留出侧边栏宽度 -->
+  <div id="main-content" class="flex-1 min-w-0 flex flex-col md:ml-56">
 
     <header class="sticky top-0 z-20 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-6 h-14">
       <div class="flex items-center gap-3">
