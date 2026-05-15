@@ -2685,6 +2685,10 @@ function parseQuoteInput(input) {
     searchInput = searchInput.replace(/\s+\d+\s*(?:boxes|box|vials?|瓶|盒|支|个|pcs|packs?)\s*$/i, '');
     // 剥离尾部规格：1000mg / 10iu / 2ml
     searchInput = searchInput.replace(/\s+\d+\s*(?:mg|iu|ml|mcg|g)\s*$/gi, '');
+    // 剥离尾部纯数字（数量），防止 "Reta 20mg 8" 剥离规格后变成 "Reta 8"
+    if (qty > 0) {
+      searchInput = searchInput.replace(/\s+\d+\s*$/, '');
+    }
     searchInput = searchInput.trim();
     if (!searchInput) searchInput = q;
 
