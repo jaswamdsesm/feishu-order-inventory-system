@@ -2683,11 +2683,15 @@ function parseQuoteInput(input) {
     // 剥离尾部数量标记：X 3 boxes / x3 / 3 boxes
     searchInput = searchInput.replace(/\s*[xX×*]\s*\d+\s*(?:boxes|box|vials?|瓶|盒|支|个|pcs|packs?)?\s*$/i, '');
     searchInput = searchInput.replace(/\s+\d+\s*(?:boxes|box|vials?|瓶|盒|支|个|pcs|packs?)\s*$/i, '');
-    // 剥离尾部规格：1000mg / 10iu / 2ml
-    searchInput = searchInput.replace(/\s+\d+\s*(?:mg|iu|ml|mcg|g)\s*$/gi, '');
     // 剥离尾部纯数字（数量），防止 "Reta 20mg 8" 剥离规格后变成 "Reta 8"
     if (qty > 0) {
       searchInput = searchInput.replace(/\s+\d+\s*$/, '');
+    }
+    // 剥离尾部规格：1000mg / 10iu / 2ml（在数量剥离之后，确保 mg 在末尾）
+    searchInput = searchInput.replace(/\s+\d+\s*(?:mg|iu|ml|mcg|g)\s*$/gi, '');
+    // 兜底：规格在中间的情况（如 qty 未提取到时）
+    if (qty <= 0) {
+      searchInput = searchInput.replace(/\s+\d+\s*(?:mg|iu|ml|mcg|g)/gi, '');
     }
     searchInput = searchInput.trim();
     if (!searchInput) searchInput = q;
