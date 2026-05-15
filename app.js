@@ -2658,24 +2658,6 @@ function parseQuoteInput(input) {
       specNum = parseInt(specMatch[1]);
     }
 
-    // === 1.5 嵌入式规格数字（如 Reta5 3 → specNum=5, qty=3） ===
-    // 仅对已知缩写前缀生效（如 Reta, RT, TR, SM, BC, WA 等），避免 SS-31/5AM 等被误解析
-    const EMBEDDED_SPEC_PREFIXES = /^(?:reta|rt|tr|sm|sk|xa|ds|bc|ip|tb|hx|g2|g6|cnd|cd|ms|ku|bb|cs|cp|wa|aa|lc|nj|hcg|mt1|mt2|ot|ta|ty|pn|ks|epi|ms|xa|ds|ot|cu|ahk|vip|ll|ad|ra|gnd|cr|br|smo|tsm|ms|lemon|h10|h12|h24|h36|5am|10am|50am|igf|np|bb|klow|shb|hhb|rp|b12)$/i;
-    if (!specNum) {
-      const embeddedSpec = q.match(/^(.+?)(\d+)\s+(\d+)\s*$/);
-      if (embeddedSpec && EMBEDDED_SPEC_PREFIXES.test(embeddedSpec[1])) {
-        specNum = parseInt(embeddedSpec[2]);
-        qty = parseInt(embeddedSpec[3]);
-      }
-    }
-    // 模式：仅字母+数字，无尾部数量（如 Reta5 → specNum=5）
-    if (!specNum) {
-      const embeddedOnly = q.match(/^(.+?)(\d+)\s*$/);
-      if (embeddedOnly && embeddedOnly[1].length >= 2 && EMBEDDED_SPEC_PREFIXES.test(embeddedOnly[1])) {
-        specNum = parseInt(embeddedOnly[2]);
-      }
-    }
-
     // === 3. 提取数量 qty ===
     let qty = 0;
     // 格式A：产品 X 3 boxes / 产品 x3 / NAD+ 1000mg X 3
@@ -2710,10 +2692,6 @@ function parseQuoteInput(input) {
     // 兜底：规格在中间的情况（如 qty 未提取到时）
     if (qty <= 0) {
       searchInput = searchInput.replace(/\s+\d+\s*(?:mg|iu|ml|mcg|g)/gi, '');
-    }
-    // 剥离嵌入式规格数字（如 Reta5 → Reta, SS31 → SS, HCG5000 → HCG）
-    if (specNum && !/mg|iu|ml|mcg|g/i.test(searchInput.slice(-4))) {
-      searchInput = searchInput.replace(/(\d+)\s*$/, '');
     }
     searchInput = searchInput.trim();
     if (!searchInput) searchInput = q;
