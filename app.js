@@ -4363,15 +4363,9 @@ async function loadDistributionStats() {
   const distOrders = allOrders.filter(o => referredNames.has((o.customer_name || '').trim().toLowerCase()));
   document.getElementById('dist-order-count').textContent = distOrders.length;
   const distAmount = distOrders.reduce((s, o) => {
-    const items = allOrderItems.filter(i => i.order_id === o.id);
-    // unit_price 存的是结算货币金额，需转为 USD
-    const goodsSettle = items.reduce((is, i) => is + (i.unit_price || 0) * i.quantity, 0);
-    const goodsUSD = goodsSettle * (o.exchange_rate || 1);
-    // handling_fee 是结算货币金额，需转为 USD
-    const handlingUSD = (parseFloat(o.handling_fee) || 0) * (o.exchange_rate || 1);
-    return s + goodsUSD - handlingUSD;
+    return s + (parseFloat(o.goods_cny) || 0) - (parseFloat(o.handling_cny) || 0);
   }, 0);
-  document.getElementById('dist-order-amount').textContent = '$' + distAmount.toFixed(2);
+  document.getElementById('dist-order-amount').textContent = '¥' + distAmount.toFixed(2);
   // 按推荐人汇总统计表
   const statsMap = {};
   activeRelations.forEach(r => {
@@ -4386,12 +4380,7 @@ async function loadDistributionStats() {
     const key = (rel.referrer_customer_name || '').trim();
     if (!statsMap[key]) return;
     statsMap[key].orderCount++;
-    const items = allOrderItems.filter(i => i.order_id === o.id);
-    // unit_price 存的是结算货币金额，需转为 USD
-    const goodsSettle = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
-    const goodsUSD = goodsSettle * (o.exchange_rate || 1);
-    const handlingUSD = (parseFloat(o.handling_fee) || 0) * (o.exchange_rate || 1);
-    statsMap[key].amount += goodsUSD - handlingUSD;
+    statsMap[key].amount += (parseFloat(o.goods_cny) || 0) - (parseFloat(o.handling_cny) || 0);
   });
   const statsArr = Object.values(statsMap).sort((a, b) => b.amount - a.amount);
   const tbody = document.getElementById('dist-stats-body');
@@ -4408,7 +4397,7 @@ async function loadDistributionStats() {
       <td class="px-4 py-2.5 text-gray-500">${esc(s.ownerName) || '—'}</td>
       <td class="px-4 py-2.5 text-right">${s.referredCount}</td>
       <td class="px-4 py-2.5 text-right">${s.orderCount}</td>
-      <td class="px-4 py-2.5 text-right font-semibold text-green-700">$${s.amount.toFixed(2)}</td>
+      <td class="px-4 py-2.5 text-right font-semibold text-green-700">¥${s.amount.toFixed(2)}</td>
     </tr>
   `).join('');
 }
