@@ -4297,7 +4297,14 @@ function openDistributionModal() {
   document.getElementById('dist-note').value = '';
   // 填充归属销售下拉
   const sel = document.getElementById('dist-owner-name');
-  sel.innerHTML = '<option value="">-- 选择归属销售 --</option>' + users.map(u => `<option value="${esc(u.display_name || u.name || '')}">${esc(u.display_name || u.name || '')}</option>`).join('');
+  if (allProfiles && allProfiles.length > 0) {
+    sel.innerHTML = '<option value="">-- 选择归属销售 --</option>' + allProfiles.map(u => {
+      const name = u.display_name || u.name || '';
+      return `<option value="${esc(name)}">${esc(name)}</option>`;
+    }).join('');
+  } else {
+    sel.innerHTML = '<option value="">-- 暂无用户数据，请刷新 --</option>';
+  }
   openModal('modal-distribution');
 }
 
