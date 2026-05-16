@@ -4293,7 +4293,11 @@ function openDistributionModal() {
   document.getElementById('dist-referrer-phone').value = '';
   document.getElementById('dist-referred-name').value = '';
   document.getElementById('dist-referred-phone').value = '';
+  document.getElementById('dist-owner-name').value = '';
   document.getElementById('dist-note').value = '';
+  // 填充归属销售下拉
+  const sel = document.getElementById('dist-owner-name');
+  sel.innerHTML = '<option value="">-- 选择归属销售 --</option>' + users.map(u => `<option value="${esc(u.display_name || u.name || '')}">${esc(u.display_name || u.name || '')}</option>`).join('');
   openModal('modal-distribution');
 }
 
@@ -4313,9 +4317,8 @@ async function saveDistributionRelation() {
     (r.referred_customer_phone || '').trim() === referredPhone
   );
   if (exists) { showToast('该被推荐人已存在活跃的分销关系', 'warning'); return; }
-  // 自动推断推荐人归属销售（从已有订单中查找）
-  const { data: referrerOrders } = await sb.from('orders').select('owner_name').limit(1).eq('customer_name', referrerName);
-  const ownerName = (referrerOrders && referrerOrders.length > 0 && referrerOrders[0].owner_name) || null;
+  // 归属销售（从下拉框选择）
+  const ownerName = document.getElementById('dist-owner-name').value.trim() || null;
   const { error } = await sb.from('distribution_relations').insert({
     referrer_customer_name: referrerName,
     referrer_customer_phone: referrerPhone || null,

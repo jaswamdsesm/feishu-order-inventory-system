@@ -674,7 +674,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script async src="https://lf-scm-cn.feishucdn.com/lark/op/h5-js-sdk-1.5.44.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script defer src="app.js?v=20260516b2"></script>
+<script defer src="app.js?v=20260516b3"></script>
 
 <!-- 批量导入产品弹窗 -->
 <div id="modal-batch-product" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/30" style="z-index:60">
@@ -752,6 +752,10 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
     <div class="border-t border-gray-100 pt-3"><p class="text-xs text-gray-400 mb-2">↓ 推荐以下客户</p></div>
     <div><label class="block text-xs text-gray-500 mb-1">被推荐人（客户B）*</label><input id="dist-referred-name" type="text" placeholder="被推荐人客户姓名" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
     <div><label class="block text-xs text-gray-500 mb-1">被推荐人电话 *</label><input id="dist-referred-phone" type="tel" placeholder="被推荐人联系电话" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/></div>
+    <div><label class="block text-xs text-gray-500 mb-1">归属销售</label>
+      <select id="dist-owner-name" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm bg-white">
+        <option value="">-- 选择归属销售 --</option>
+      </select></div>
     <div><label class="block text-xs text-gray-500 mb-1">备注</label><textarea id="dist-note" rows="2" placeholder="选填" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm resize-none"></textarea></div>
     <div class="flex gap-3 pt-2">
       <button onclick="closeModal('modal-distribution')" class="flex-1 btn-touch py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500">取消</button>
