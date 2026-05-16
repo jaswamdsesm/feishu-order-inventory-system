@@ -419,7 +419,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
       <div class="grid grid-cols-3 gap-4">
         <div class="bg-white rounded-2xl p-5 border border-gray-100"><p class="text-xs text-gray-400 mb-1">分销关系数</p><p id="dist-rel-count" class="text-2xl font-bold text-blue-600">-</p></div>
         <div class="bg-white rounded-2xl p-5 border border-gray-100"><p class="text-xs text-gray-400 mb-1">分销订单总数</p><p id="dist-order-count" class="text-2xl font-bold text-purple-600">-</p></div>
-        <div class="bg-white rounded-2xl p-5 border border-gray-100"><p class="text-xs text-gray-400 mb-1">分销订单金额</p><p id="dist-order-amount" class="text-2xl font-bold text-green-600">-</p></div>
+        <div class="bg-white rounded-2xl p-5 border border-gray-100"><p class="text-xs text-gray-400 mb-1">分销订单金额(CNY)</p><p id="dist-order-amount" class="text-2xl font-bold text-green-600">-</p></div>
       </div>
       <!-- 分销关系列表 -->
       <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -445,7 +445,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
                 <th class="px-4 py-2 text-left">归属销售</th>
                 <th class="px-4 py-2 text-right">推荐客户数</th>
                 <th class="px-4 py-2 text-right">分销订单数</th>
-                <th class="px-4 py-2 text-right">分销金额(USD)</th>
+                <th class="px-4 py-2 text-right">分销金额(¥)</th>
               </tr>
             </thead>
             <tbody id="dist-stats-body"></tbody>
@@ -674,7 +674,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script async src="https://lf-scm-cn.feishucdn.com/lark/op/h5-js-sdk-1.5.44.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script defer src="app.js?v=20260516b5"></script>
+<script defer src="app.js?v=20260516b7"></script>
 
 <!-- 批量导入产品弹窗 -->
 <div id="modal-batch-product" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/30" style="z-index:60">
