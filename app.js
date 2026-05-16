@@ -4364,8 +4364,10 @@ async function loadDistributionStats() {
   document.getElementById('dist-order-count').textContent = distOrders.length;
   const distAmount = distOrders.reduce((s, o) => {
     const items = allOrderItems.filter(i => i.order_id === o.id);
-    const goodsUSD = items.reduce((is, i) => is + (i.unit_price || 0) * i.quantity, 0);
-    // 手续费是结算货币金额，需转为 USD
+    // unit_price 存的是结算货币金额，需转为 USD
+    const goodsSettle = items.reduce((is, i) => is + (i.unit_price || 0) * i.quantity, 0);
+    const goodsUSD = goodsSettle * (o.exchange_rate || 1);
+    // handling_fee 是结算货币金额，需转为 USD
     const handlingUSD = (parseFloat(o.handling_fee) || 0) * (o.exchange_rate || 1);
     return s + goodsUSD - handlingUSD;
   }, 0);
@@ -4385,7 +4387,9 @@ async function loadDistributionStats() {
     if (!statsMap[key]) return;
     statsMap[key].orderCount++;
     const items = allOrderItems.filter(i => i.order_id === o.id);
-    const goodsUSD = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
+    // unit_price 存的是结算货币金额，需转为 USD
+    const goodsSettle = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
+    const goodsUSD = goodsSettle * (o.exchange_rate || 1);
     const handlingUSD = (parseFloat(o.handling_fee) || 0) * (o.exchange_rate || 1);
     statsMap[key].amount += goodsUSD - handlingUSD;
   });
