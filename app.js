@@ -4354,7 +4354,10 @@ async function loadDistributionStats() {
   document.getElementById('dist-order-count').textContent = distOrders.length;
   const distAmount = distOrders.reduce((s, o) => {
     const items = allOrderItems.filter(i => i.order_id === o.id);
-    return s + items.reduce((is, i) => is + (i.unit_price || 0) * i.quantity, 0);
+    const goodsUSD = items.reduce((is, i) => is + (i.unit_price || 0) * i.quantity, 0);
+    // 手续费是结算货币金额，需转为 USD
+    const handlingUSD = (parseFloat(o.handling_fee) || 0) * (o.exchange_rate || 1);
+    return s + goodsUSD - handlingUSD;
   }, 0);
   document.getElementById('dist-order-amount').textContent = '$' + distAmount.toFixed(2);
   // 按推荐人汇总统计表
@@ -4372,7 +4375,9 @@ async function loadDistributionStats() {
     if (!statsMap[key]) return;
     statsMap[key].orderCount++;
     const items = allOrderItems.filter(i => i.order_id === o.id);
-    statsMap[key].amount += items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
+    const goodsUSD = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
+    const handlingUSD = (parseFloat(o.handling_fee) || 0) * (o.exchange_rate || 1);
+    statsMap[key].amount += goodsUSD - handlingUSD;
   });
   const statsArr = Object.values(statsMap).sort((a, b) => b.amount - a.amount);
   const tbody = document.getElementById('dist-stats-body');
