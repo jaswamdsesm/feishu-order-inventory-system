@@ -125,7 +125,9 @@ async function onSettlementCurrencyChange() {
 }
 
 async function loadOrderExchangeRate() {
-  // 打开订单弹窗时调用，初始化汇率
+  // 打开订单弹窗时调用，强制实时获取汇率（不用缓存）
+  _exchangeRates = null; // 清空缓存，强制 fetch 最新汇率
+  _exchangeRatesExpiry = 0;
   const rates = await getExchangeRates();
   _orderUsdToCny = rates.CNY || 7.25;
   const cur = _settlementCurrency;
@@ -402,6 +404,7 @@ let allProducts = [], allOrders = [], allOrderItems = [], allProfiles = [];
 let allInventoryLogs = [];
 let currentProfileId = '';  // 当前用户的 profile UUID，供订单权限过滤
 let currentPage = 'dashboard', pageRefreshTimers = {}, editingOrderId = null, orderItemCounter = 0;
+let allDistributionRelations = []; // 分销关系缓存
 let originalStock = 0;  // 编辑产品时记录原始库存，用于写变动日志
 
 // ============ 初始化 ============
@@ -655,7 +658,7 @@ function switchPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pe = document.getElementById('page-' + page);
   if (pe) pe.classList.add('active');
-  const titles = { dashboard: '仪表盘', inventory: '库存管理', orders: '订单管理', logs: '变动日志', users: '用户管理', quote: '报价助手', shipping: '运费助手' };
+  const titles = { dashboard: '仪表盘', inventory: '库存管理', orders: '订单管理', logs: '变动日志', users: '用户管理', quote: '报价助手', shipping: '运费助手', distribution: '分销管理' };
   const te = document.getElementById('page-title');
   if (te) te.textContent = titles[page] || '';
   clearAllRefreshTimers();
@@ -666,6 +669,7 @@ function switchPage(page) {
   else if (page === 'users' && currentRole === 'super_admin') { renderUsers(); }
   else if (page === 'quote') { renderQuotePage(); }
   else if (page === 'shipping') { loadWeightProducts().then(() => loadShippingTemplates().then(renderShippingPage)); }
+  else if (page === 'distribution') { loadDistributionRelations().then(() => { renderDistributionRelations(); loadDistributionStats(); }); }
 }
 function clearAllRefreshTimers() { Object.values(pageRefreshTimers).forEach(t => clearInterval(t)); pageRefreshTimers = {}; }
 function startPageRefresh(page, fn) { clearAllRefreshTimers(); fn(); pageRefreshTimers[page] = setInterval(fn, 30000); }
@@ -760,6 +764,8 @@ async function loadOrders() {
     if (!e2) items = iData || [];
   }
   allOrderItems = items;
+  // 同时加载分销关系（供订单页面标记用）
+  loadDistributionRelations().catch(() => {});
   return allOrders;
 }
 async function loadInventoryLogs() { const { data, error } = await sb.from('inventory_logs').select('*').order('created_at', { ascending: false }).limit(200); if (error) console.error('loadInventoryLogs error:', error); else allInventoryLogs = data || []; console.log('loadInventoryLogs:', allInventoryLogs.length, '条'); }
@@ -1020,6 +1026,7 @@ function renderOrders() {
   const dateTo = document.getElementById('order-date-to').value;
   const sortField = document.getElementById('order-sort-dropdown').dataset.sortField || 'created_at';
   const sortDir = document.getElementById('order-sort-dropdown').dataset.sortDir || 'desc';
+  const distFilter = document.getElementById('order-dist-dropdown')?.dataset?.value || '';
   let filtered = allOrders;
   if (statusFilter) filtered = filtered.filter(o => o.status === statusFilter);
   if (ownerFilter) filtered = filtered.filter(o => o.owner_name === ownerFilter);
@@ -1027,6 +1034,15 @@ function renderOrders() {
   if (kw) filtered = filtered.filter(o => (o.order_no || '').toLowerCase().includes(kw) || (o.customer_name || '').toLowerCase().includes(kw));
   if (dateFrom) filtered = filtered.filter(o => (o.created_at || '').slice(0, 10) >= dateFrom);
   if (dateTo) filtered = filtered.filter(o => (o.created_at || '').slice(0, 10) <= dateTo);
+  // 分销筛选
+  if (distFilter) {
+    const distNames = new Set(allDistributionRelations.filter(r => r.status === 'active').map(r => (r.referred_customer_name || '').trim().toLowerCase()));
+    if (distFilter === 'yes') {
+      filtered = filtered.filter(o => distNames.has((o.customer_name || '').trim().toLowerCase()));
+    } else if (distFilter === 'no') {
+      filtered = filtered.filter(o => !distNames.has((o.customer_name || '').trim().toLowerCase()));
+    }
+  }
   // 排序（日期字段按时间戳排序，金额按数值排序）
   filtered.sort((a, b) => {
     let va, vb;
@@ -1072,6 +1088,9 @@ function renderOrders() {
     const canEdit = isSuper && !['shipped','completed'].includes(o.status);
     const btnHtml = canEdit ? `<button onclick="openOrderModal('${o.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteOrder('${o.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
     const deliveredBtn = (o.status === 'shipped' && isAdmin) ? `<button onclick="markDelivered('${o.id}')" class="text-xs text-blue-600 hover:underline mr-2"><svg class="w-3.5 h-3.5 inline-block mr-0.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>已送达</button>` : '';
+    // 分销标签
+    const distRel = allDistributionRelations.find(r => r.status === 'active' && (r.referred_customer_name || '').trim().toLowerCase() === (o.customer_name || '').trim().toLowerCase());
+    const distTag = distRel ? `<span class="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 font-medium" title="推荐人：${esc(distRel.referrer_customer_name)}">分销</span>` : '';
     // 直接读数据库字段，不再反推；字段存在且不为 null 就显示（允许显示 0.00）
     const goodsCNYStr   = (o.goods_cny != null && o.goods_cny !== '') ? ` = ¥${parseFloat(o.goods_cny).toFixed(2)}` : '';
     const shipCNYStr    = (o.shipping_cny != null && o.shipping_cny !== '') ? ` = ¥${parseFloat(o.shipping_cny).toFixed(2)}` : '';
@@ -1084,6 +1103,7 @@ function renderOrders() {
           <span class="font-bold text-base">${esc(o.order_no)}</span>
           <span class="text-xs px-2 py-0.5 rounded-full ${sc2[o.status] || ''} font-medium bg-opacity-50">${statusText(o.status)}</span>
           ${cur !== 'USD' ? `<span class="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">${cur}</span>` : ''}
+          ${distTag}
         </div>
         <span class="text-sm text-gray-700 font-semibold">${(o.created_at || '').slice(0, 10)}</span>
       </div>
@@ -1093,6 +1113,7 @@ function renderOrders() {
         ${o.country ? `<span><svg class="w-3.5 h-3.5 inline-block mr-0.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"/></svg>${esc(o.country)}</span>` : ''}
         ${o.payment_method ? `<span class="text-purple-500">${PAYMENT_LABELS[o.payment_method]}</span>` : ''}
         ${o.owner_name ? `<span class="text-blue-400">归属：${esc(o.owner_name)}</span>` : ''}
+        ${distRel ? `<span class="text-purple-500" title="分销订单">推荐人：${esc(distRel.referrer_customer_name)}</span>` : ''}
       </div>
       ${o.customer_address ? `<div class="text-xs text-gray-400 mb-2 truncate"><svg class="w-3.5 h-3.5 inline-block mr-0.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>${addrHtml}</div>` : ''}
       ${trackHtml}
@@ -1399,15 +1420,26 @@ async function saveOrder() {
     const totalAmt = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
     // 结算货币相关
     const settlementCurrency = document.getElementById('order-settlement-currency')?.value || 'USD';
-    const exchangeRate = _orderExchangeRate; // 1 结算货币 = ? USD（用于利润换算）
-    // 实时拉取结算货币→人民币汇率（保存时锁定）
+    // 保存时实时拉取汇率并锁定（结算货币→USD，结算货币→CNY）
+    let exchangeRate = _orderExchangeRate;
     let cnyRate = _cnyExchangeRate || 7.25;
     try {
       const resp = await fetch(`https://open.er-api.com/v6/latest/${settlementCurrency}`);
       const data = await resp.json();
-      if (data && data.rates && data.rates.CNY) {
-        cnyRate = data.rates.CNY;
-        _cnyExchangeRate = cnyRate;
+      if (data && data.rates) {
+        // 结算货币→CNY
+        if (data.rates.CNY) {
+          cnyRate = data.rates.CNY;
+          _cnyExchangeRate = cnyRate;
+        }
+        // 结算货币→USD（1 结算货币 = ? USD）
+        if (data.rates.USD && settlementCurrency !== 'USD') {
+          exchangeRate = data.rates.USD;
+          _orderExchangeRate = exchangeRate;
+        } else if (settlementCurrency === 'USD') {
+          exchangeRate = 1;
+          _orderExchangeRate = 1;
+        }
       }
     } catch (e) { console.warn('获取实时汇率失败，使用缓存值', e); }
     // 货物/运费/手续费直接用结算货币金额 × 结算货币→CNY汇率
@@ -4204,6 +4236,162 @@ async function appendShipCurrency(currency) {
   wrap.appendChild(btn);
   detail.appendChild(wrap);
   showToast(`已换算（1 USD = ${sym}${rate.toFixed(4)}）`, 'success');
+}
+
+// ============ 分销管理 ============
+
+async function loadDistributionRelations() {
+  const { data, error } = await sb.from('distribution_relations').select('*').order('created_at', { ascending: false });
+  if (!error) allDistributionRelations = data || [];
+  return allDistributionRelations;
+}
+
+function renderDistributionRelations() {
+  const kw = (document.getElementById('dist-search')?.value || '').trim().toLowerCase();
+  const active = allDistributionRelations.filter(r => r.status === 'active');
+  const filtered = kw ? active.filter(r =>
+    (r.referrer_customer_name || '').toLowerCase().includes(kw) ||
+    (r.referred_customer_name || '').toLowerCase().includes(kw) ||
+    (r.referrer_customer_phone || '').includes(kw) ||
+    (r.referred_customer_phone || '').includes(kw)
+  ) : active;
+  const listEl = document.getElementById('dist-relations-list');
+  const emptyEl = document.getElementById('dist-relations-empty');
+  if (filtered.length === 0) {
+    listEl.innerHTML = '';
+    emptyEl.classList.remove('hidden');
+    return;
+  }
+  emptyEl.classList.add('hidden');
+  listEl.innerHTML = filtered.map(r => `
+    <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold shrink-0">推</div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 text-sm">
+            <span class="font-medium">${esc(r.referrer_customer_name)}</span>
+            ${r.referrer_customer_phone ? `<span class="text-gray-400 text-xs">${esc(r.referrer_customer_phone)}</span>` : ''}
+            <svg class="w-4 h-4 text-gray-300 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+            <span class="font-medium text-purple-700">${esc(r.referred_customer_name)}</span>
+            ${r.referred_customer_phone ? `<span class="text-gray-400 text-xs">${esc(r.referred_customer_phone)}</span>` : ''}
+          </div>
+          <div class="text-xs text-gray-400 mt-0.5">
+            ${r.referrer_owner_name ? `归属销售：${esc(r.referrer_owner_name)} · ` : ''}
+            ${(r.created_at || '').slice(0, 10)}
+            ${r.note ? ` · ${esc(r.note)}` : ''}
+          </div>
+        </div>
+      </div>
+      <button onclick="deactivateDistributionRelation('${r.id}')" class="text-xs text-red-400 hover:text-red-600 shrink-0 ml-2 px-2 py-1">解绑</button>
+    </div>
+  `).join('');
+}
+
+function openDistributionModal() {
+  document.getElementById('dist-edit-id').value = '';
+  document.getElementById('dist-referrer-name').value = '';
+  document.getElementById('dist-referrer-phone').value = '';
+  document.getElementById('dist-referred-name').value = '';
+  document.getElementById('dist-referred-phone').value = '';
+  document.getElementById('dist-note').value = '';
+  openModal('modal-distribution');
+}
+
+async function saveDistributionRelation() {
+  const referrerName = document.getElementById('dist-referrer-name').value.trim();
+  const referrerPhone = document.getElementById('dist-referrer-phone').value.trim();
+  const referredName = document.getElementById('dist-referred-name').value.trim();
+  const referredPhone = document.getElementById('dist-referred-phone').value.trim();
+  const note = document.getElementById('dist-note').value.trim();
+  if (!referrerName) { showToast('请输入推荐人姓名', 'warning'); return; }
+  if (!referredName) { showToast('请输入被推荐人姓名', 'warning'); return; }
+  if (!referredPhone) { showToast('请输入被推荐人电话', 'warning'); return; }
+  // 检查重复：同名+同电话已存在 active 关系
+  const exists = allDistributionRelations.find(r =>
+    r.status === 'active' &&
+    (r.referred_customer_name || '').trim().toLowerCase() === referredName.toLowerCase() &&
+    (r.referred_customer_phone || '').trim() === referredPhone
+  );
+  if (exists) { showToast('该被推荐人已存在活跃的分销关系', 'warning'); return; }
+  // 自动推断推荐人归属销售（从已有订单中查找）
+  const { data: referrerOrders } = await sb.from('orders').select('owner_name').limit(1).eq('customer_name', referrerName);
+  const ownerName = (referrerOrders && referrerOrders.length > 0 && referrerOrders[0].owner_name) || null;
+  const { error } = await sb.from('distribution_relations').insert({
+    referrer_customer_name: referrerName,
+    referrer_customer_phone: referrerPhone || null,
+    referred_customer_name: referredName,
+    referred_customer_phone: referredPhone,
+    referrer_owner_name: ownerName,
+    status: 'active',
+    created_by: feishuUid,
+    note: note || null
+  });
+  if (error) { showToast('保存失败: ' + error.message, 'error'); return; }
+  closeModal('modal-distribution');
+  showToast('分销关系已绑定', 'success');
+  await loadDistributionRelations();
+  renderDistributionRelations();
+  loadDistributionStats();
+}
+
+async function deactivateDistributionRelation(id) {
+  if (!confirm('确定解绑该分销关系？解绑后不再自动标记分销订单。')) return;
+  const { error } = await sb.from('distribution_relations').update({ status: 'inactive' }).eq('id', id);
+  if (error) { showToast('解绑失败: ' + error.message, 'error'); return; }
+  showToast('已解绑', 'success');
+  await loadDistributionRelations();
+  renderDistributionRelations();
+  loadDistributionStats();
+}
+
+async function loadDistributionStats() {
+  const activeRelations = allDistributionRelations.filter(r => r.status === 'active');
+  const referredNames = new Set(activeRelations.map(r => (r.referred_customer_name || '').trim().toLowerCase()));
+  // 统计面板
+  document.getElementById('dist-rel-count').textContent = activeRelations.length;
+  // 统计分销订单
+  const distOrders = allOrders.filter(o => referredNames.has((o.customer_name || '').trim().toLowerCase()));
+  document.getElementById('dist-order-count').textContent = distOrders.length;
+  const distAmount = distOrders.reduce((s, o) => {
+    const items = allOrderItems.filter(i => i.order_id === o.id);
+    return s + items.reduce((is, i) => is + (i.unit_price || 0) * i.quantity, 0);
+  }, 0);
+  document.getElementById('dist-order-amount').textContent = '$' + distAmount.toFixed(2);
+  // 按推荐人汇总统计表
+  const statsMap = {};
+  activeRelations.forEach(r => {
+    const key = (r.referrer_customer_name || '').trim();
+    if (!key) return;
+    if (!statsMap[key]) statsMap[key] = { referrerName: key, ownerName: r.referrer_owner_name || '', referredCount: 0, orderCount: 0, amount: 0 };
+    statsMap[key].referredCount++;
+  });
+  distOrders.forEach(o => {
+    const rel = activeRelations.find(r => (r.referred_customer_name || '').trim().toLowerCase() === (o.customer_name || '').trim().toLowerCase());
+    if (!rel) return;
+    const key = (rel.referrer_customer_name || '').trim();
+    if (!statsMap[key]) return;
+    statsMap[key].orderCount++;
+    const items = allOrderItems.filter(i => i.order_id === o.id);
+    statsMap[key].amount += items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
+  });
+  const statsArr = Object.values(statsMap).sort((a, b) => b.amount - a.amount);
+  const tbody = document.getElementById('dist-stats-body');
+  const empty = document.getElementById('dist-stats-empty');
+  if (statsArr.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  tbody.innerHTML = statsArr.map(s => `
+    <tr class="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+      <td class="px-4 py-2.5 font-medium">${esc(s.referrerName)}</td>
+      <td class="px-4 py-2.5 text-gray-500">${esc(s.ownerName) || '—'}</td>
+      <td class="px-4 py-2.5 text-right">${s.referredCount}</td>
+      <td class="px-4 py-2.5 text-right">${s.orderCount}</td>
+      <td class="px-4 py-2.5 text-right font-semibold text-green-700">$${s.amount.toFixed(2)}</td>
+    </tr>
+  `).join('');
 }
 
 window.addEventListener('DOMContentLoaded', init);
