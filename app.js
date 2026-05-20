@@ -144,7 +144,7 @@ async function loadOrderExchangeRate() {
 }
 
 function normalizeStr(s) {
-  return (s || '').toLowerCase().replace(/[\s\-_.]/g, '').trim();
+  return (s || '').toLowerCase().replace(/[\s\-_./]/g, '').trim();
 }
 
 // Levenshtein 编辑距离：处理字符顺序错误（如 DSIP ↔ SDIP）
@@ -2327,6 +2327,8 @@ function normalizeSynonyms(raw) {
   s = s.replace(/\bno\b/gi, 'without');
   // with 去掉（CJC with DAC → CJC DAC，让 with/without 都统一到产品名不含 with 的版本去匹配）
   s = s.replace(/\bwith\b/gi, ' ');
+  // 常见写法变体：LR3/1 → 1LR3，让 IGF-LR3/1 匹配 IGF-1LR3
+  s = s.replace(/LR3\/1/gi, '1LR3');
   // 多个空格合并
   s = s.replace(/\s+/g, ' ').trim();
   return s;
@@ -2706,14 +2708,33 @@ function parseQuoteInput(input) {
     }
 
     // === 3. 提取数量 qty ===
+    // 注意：*Nvials 出现在规格数字（mg/iu/ml）后面时，是规格描述（每盒N支），不是数量
+    // 例如 "10mg*10vials" 表示每盒10支，不是10盒
     let qty = 0;
     // 格式A：产品 X 3 boxes / 产品 x3 / NAD+ 1000mg X 3
+    // 排除：规格数字后紧跟 *Nvials（如 10mg*10vials → 不应提取 qty=10）
     let m = q.match(/^(.+?)\s*[xX×*]\s*(\d+)\s*(?:boxes|box|vials?|瓶|盒|支|个|pcs|packs?)?\s*$/i);
-    if (m) qty = parseInt(m[2]);
+    if (m) {
+      const prefix = m[1];
+      // 如果前面紧邻规格单位（mg/iu/ml/mcg/g），则 *N 是规格的一部分，不是数量
+      const isAfterSpec = /\d+\s*(?:mg|iu|ml|mcg|g)\s*$/i.test(prefix);
+      if (!isAfterSpec) qty = parseInt(m[2]);
+    }
     // 格式A2：产品 X 10 3 → X 后面两个数字，第二个是数量（如 SS-31 50mg X 10 3 → qty=3）
     if (!qty) { m = q.match(/\s*[xX×*]\s*\d+\s+(\d+)\s*$/); if (m) qty = parseInt(m[1]); }
     // 格式B：产品 3 boxes / 产品 2 vials
-    if (!qty) { m = q.match(/^(.+?)\s+(\d+)\s*(?:boxes|box|vials?|瓶|盒|支|个|pcs|packs?)\s*$/i); if (m) qty = parseInt(m[2]); }
+    // 排除：规格数字后紧跟 N vials（如 10mg 10vials → 不应提取 qty=10）
+    if (!qty) {
+      m = q.match(/^(.+?)\s+(\d+)\s*(?:boxes|box|vials?|瓶|盒|支|个|pcs|packs?)\s*$/i);
+      if (m) {
+        const prefix = m[1];
+        const isAfterSpec = /\d+\s*(?:mg|iu|ml|mcg|g)\s*$/i.test(prefix);
+        // boxes/盒 明确表示盒数，始终视为数量；vials/支 需要看是否跟在规格后面
+        const unit = (q.match(/^(.+?)\s+(\d+)\s*(?:boxes|box|vials?|瓶|盒|支|个|pcs|packs?)\s*$/i) || [])[3] || '';
+        const isBoxUnit = /(?:boxes|box|盒|pcs|packs?)/i.test(unit);
+        if (isBoxUnit || !isAfterSpec) qty = parseInt(m[2]);
+      }
+    }
     // 格式B2：尾部独立数字作为数量（如 "SS-31 50mg 3" → qty=3，但要排除规格数字）
     if (!qty) { m = q.match(/^(.+?\d+(?:mg|iu|ml|mcg|g)?)\s+(\d+)\s*$/i); if (m && parseInt(m[2]) !== parseInt((m[1].match(/(\d+)\s*(?:mg|iu|ml|mcg|g)/i)||[])[1])) qty = parseInt(m[2]); }
     // 格式C：3x产品 / 3*产品
