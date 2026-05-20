@@ -1325,7 +1325,9 @@ function addOrderItemRow(existing) {
   function renderDrop(list) {
     if (list.length === 0) { dropEl.classList.add('hidden'); return; }
     dropEl.innerHTML = list.map(p => {
-      const label = `${esc(p.name)}${p.sku ? '（' + esc(p.sku) + '）' : ''}`;
+      const label = p.short_name
+        ? `${esc(p.name)}（${esc(p.short_name)}）`
+        : `${esc(p.name)}${p.sku ? '（' + esc(p.sku) + '）' : ''}`;
       return `<div class="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 border-b border-gray-50 last:border-0" data-pid="${p.id}">
         <span class="font-medium">${label}</span>
         <span class="text-gray-400 ml-1">库存:${p.current_stock}${p.unit}</span>
@@ -1338,7 +1340,9 @@ function addOrderItemRow(existing) {
         const pid = el.dataset.pid;
         const p = allProducts.find(x => x.id === pid);
         hiddenInput.value = pid;
-        searchInput.value = p ? `${p.name}${p.sku ? '（' + p.sku + '）' : ''}` : '';
+        searchInput.value = p
+          ? (p.short_name ? `${p.name}（${p.short_name}）` : `${p.name}${p.sku ? '（' + p.sku + '）' : ''}`)
+          : '';
         dropEl.classList.add('hidden');
       });
     });
@@ -1366,7 +1370,9 @@ function addOrderItemRow(existing) {
     const p = allProducts.find(x => x.id === existing.product_id);
     if (p) {
       hiddenInput.value = p.id;
-      searchInput.value = `${p.name}${p.sku ? '（' + p.sku + '）' : ''}`;
+      searchInput.value = p.short_name
+        ? `${p.name}（${p.short_name}）`
+        : `${p.name}${p.sku ? '（' + p.sku + '）' : ''}`;
     }
   }
 }
@@ -2208,8 +2214,8 @@ const QUOTE_PRODUCTS = [
   { name:'MOTS-c', code:'MS40', spec:'40mg*10vials', price:160 },
   { name:'BPC157+TB500 5mg+5mg', code:'BB10', spec:'10mg*10vials', price:86 },
   { name:'BPC157+TB500 10mg+10mg', code:'BB20', spec:'20mg*10vials', price:147 },
-  { name:'BPC157+TB500+GHK+KPV', code:'KLOW80', spec:'80mg*10vials', price:210 },
-  { name:'BPC157+TB500+GHK', code:'BBG70', spec:'70mg*10vials', price:165 },
+  { name:'BPC157+TB500+GHK+KPV', code:'KLOW80', spec:'80mg*10vials', price:210, alias:'KLOW' },
+  { name:'BPC157+TB500+GHK', code:'BBG70', spec:'70mg*10vials', price:165, alias:'GLOW70' },
   { name:'Cagrilintide+Semaglutide', code:'CS10', spec:'10mg*10vials', price:178 },
   { name:'Lipo-c', code:'LC216', spec:'10mg*10vials', price:108 },
   { name:'SUPER Human Blend', code:'SHB', spec:'10mg*10vials', price:98 },
@@ -2597,6 +2603,15 @@ function showTotalSummary() {
   updateSummary(el, 'USD', 1);
 }
 
+// 报价产品行格式化（统一处理 alias 显示）
+function formatQuoteProduct(p, qty) {
+  const codeDisplay = p.alias ? `${p.code}（${p.alias}）` : p.code;
+  if (qty > 0) {
+    return `${p.name}：${codeDisplay} ${p.spec} USD${p.price} x${qty} = USD${p.price * qty}`;
+  }
+  return `${p.name}：${codeDisplay} ${p.spec} USD${p.price}`;
+}
+
 // ============ 输入解析 ============
 function parseQuoteInput(input) {
   const lines = [];
@@ -2736,10 +2751,10 @@ function parseQuoteInput(input) {
       cleanComboSearch = cleanComboSearch.replace(/\d+\s*(?:mg|iu|ml|mcg|g)/gi, '').replace(/\s+/g, '').replace(/\+$/, '').trim();
       let comboHits = [];
 
-      // 方法1：直接包含匹配（别名或代码精确匹配）
+      // 方法1：精确匹配（避免 "BPC157+TB500+GHK" 把 KLOW80 也包含进来）
       comboHits = QUOTE_PRODUCTS.filter(p => {
         const pn = normalizeStr(p.name);
-        return pn.includes(cleanComboSearch) || pn.includes(normalizeStr(comboSearch)) || normalizeStr(p.code) === normalizeStr(comboSearch);
+        return pn === cleanComboSearch || pn === normalizeStr(comboSearch) || normalizeStr(p.code) === normalizeStr(comboSearch);
       });
 
       // 方法2：按 + 拆分，检查两侧产品名是否分别匹配组合产品名的各部分
@@ -2778,16 +2793,9 @@ function parseQuoteInput(input) {
       }
       if (comboHits.length > 0) {
         if (comboHits.length === 1) {
-          const p = comboHits[0];
-          if (qty > 0) {
-            lines.push(`${p.name}：${p.code} ${p.spec} USD${p.price} x${qty} = USD${p.price * qty}`);
-          } else {
-            lines.push(`${p.name}：${p.code} ${p.spec} USD${p.price}`);
-          }
+          lines.push(formatQuoteProduct(comboHits[0], qty || 0));
         } else {
-          comboHits.forEach(p => {
-            lines.push(`${p.name}：${p.code} ${p.spec} USD${p.price}`);
-          });
+          comboHits.forEach(p => { lines.push(formatQuoteProduct(p)); });
         }
         addQuoteHistory(comboHits);
       } else {
@@ -2824,15 +2832,10 @@ function parseQuoteInput(input) {
       const recs = recommendSimilar(searchInput);
       if (recs.length > 0) {
         lines.push(`[tip] 你可能想找：`);
-        recs.forEach(p => { lines.push(`${p.name}：${p.code} ${p.spec} USD${p.price}`); });
+        recs.forEach(p => { lines.push(formatQuoteProduct(p)); });
       }
     } else if (hits.length === 1) {
-      const p = hits[0];
-      if (qty > 0) {
-        lines.push(`${p.name}：${p.code} ${p.spec} USD${p.price} x${qty} = USD${p.price * qty}`);
-      } else {
-        lines.push(`${p.name}：${p.code} ${p.spec} USD${p.price}`);
-      }
+      lines.push(formatQuoteProduct(hits[0], qty || 0));
       addQuoteHistory(hits);
     } else {
       // 按产品名分组
@@ -2841,14 +2844,12 @@ function parseQuoteInput(input) {
       const groupKeys = Object.keys(groups);
       if (groupKeys.length === 1) {
         // 同一产品多规格：列出全部
-        groups[groupKeys[0]].forEach(p => {
-          lines.push(`${p.name}：${p.code} ${p.spec} USD${p.price}`);
-        });
+        groups[groupKeys[0]].forEach(p => { lines.push(formatQuoteProduct(p)); });
         addQuoteHistory(hits);
       } else {
         // 不同产品：列出全部
         groupKeys.forEach(name => {
-          groups[name].forEach(p => { lines.push(`${p.name}：${p.code} ${p.spec} USD${p.price}`); });
+          groups[name].forEach(p => { lines.push(formatQuoteProduct(p)); });
         });
         addQuoteHistory(hits);
       }
