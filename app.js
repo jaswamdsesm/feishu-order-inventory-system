@@ -2391,7 +2391,7 @@ function quoteFindByNameOrCode(input) {
     'epi': 'Epithalon', 'sk': 'Selank', 'pn': 'Pinealon',
     'cr': 'Cardiogen',
     // 组合产品别名
-    'klow': 'BPC157+TB500+GHK+KPV', 'bbg': 'BPC157+TB500+GHK',
+    'klow': 'BPC157+TB500+GHK+KPV', 'bbg': 'BPC157+TB500+GHK', 'glow': 'BPC157+TB500+GHK',
     'lipoc': 'Lipo-c', 'shb': 'SUPER Human Blend',
     'lemon': 'Lemon Bottle', 'lemonbottle': 'Lemon Bottle',
     'bac': 'BAC Water',
@@ -2606,7 +2606,7 @@ function parseQuoteInput(input) {
   // 组合产品别名映射：用户输入 → 组合产品名（用于整体匹配优先）
   const COMBO_ALIASES = {
     'bpc+tb': 'BPC157+TB500', 'bpc157+tb500': 'BPC157+TB500', 'bpc157+tb': 'BPC157+TB500',
-    'bbg': 'BPC157+TB500+GHK', 'bpc+tb+ghk': 'BPC157+TB500+GHK', 'bpc157+tb500+ghk': 'BPC157+TB500+GHK',
+    'bbg': 'BPC157+TB500+GHK', 'glow': 'BPC157+TB500+GHK', 'glow70': 'BPC157+TB500+GHK', 'bpc+tb+ghk': 'BPC157+TB500+GHK', 'bpc157+tb500+ghk': 'BPC157+TB500+GHK',
     'klow': 'BPC157+TB500+GHK+KPV', 'bpc+tb+ghk+kpv': 'BPC157+TB500+GHK+KPV',
     'cagri+sema': 'Cagrilintide+Semaglutide', 'cagrilintide+semaglutide': 'Cagrilintide+Semaglutide',
     'cs': 'Cagrilintide+Semaglutide',
