@@ -3699,6 +3699,11 @@ function deleteShippingTemplate(id) {
   if (!confirm('确定删除该运费模板？')) return;
   shippingTemplates = shippingTemplates.filter(t => t.id !== id);
   saveShippingTemplatesToStorage();
+  // 直接从 Supabase 删除该记录（sync_shipping_templates RPC 只做 upsert 不做 delete）
+  sb.from('shipping_templates').delete().eq('id', id).then(
+    () => { console.log('运费模板已从云端删除'); },
+    err => { console.warn('运费模板云端删除失败:', err); }
+  );
   renderShippingPage();
   showToast('已删除', 'success');
 }
