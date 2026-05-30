@@ -2706,6 +2706,17 @@ function parseQuoteInput(input) {
     if (specMatch) {
       specNum = parseInt(specMatch[1]);
     }
+    // 补充：产品名缩写 + 尾部纯数字（无单位），如 Tirz5/GHKCU100/MOTSC10 → specHint=数字
+    // 条件：没有规格单位、输入以字母打头且尾部跟数字（字母和数字中间可以无分隔符）
+    let specHint = null;
+    let specHintSuffix = ''; // 被识别为 specHint 的尾部数字字符串，用于从 searchInput 中剥离
+    if (!specNum) {
+      const tailNumMatch = q.match(/^([a-zA-Z][a-zA-Z0-9\-+_/ ]*)(\d+)\s*$/);
+      if (tailNumMatch) {
+        specHint = parseInt(tailNumMatch[2]);
+        specHintSuffix = tailNumMatch[2];
+      }
+    }
 
     // === 3. 提取数量 qty ===
     // 注意：*Nvials 出现在规格数字（mg/iu/ml）后面时，是规格描述（每盒N支），不是数量
@@ -2757,6 +2768,20 @@ function parseQuoteInput(input) {
     }
     // 剥离尾部规格：1000mg / 10iu / 2ml（在数量剥离之后，确保 mg 在末尾）
     searchInput = searchInput.replace(/\s+\d+\s*(?:mg|iu|ml|mcg|g)\s*$/gi, '');
+    // specHint：如果尾部数字被识别为规格 hint（无单位，紧贴字母），也从 searchInput 中剥离
+    // 这样 GHKCU100 → searchInput = GHKCU，MOTSC10 → searchInput = MOTSC
+    // 但要排除产品代码本身（如 RT10、MT1）：先检查完整输入是否能精确命中某个产品代码
+    if (specHintSuffix && searchInput.endsWith(specHintSuffix)) {
+      const fullKw = normalizeStr(searchInput);
+      const isExactCode = QUOTE_PRODUCTS.some(p => normalizeStr(p.code) === fullKw);
+      if (!isExactCode) {
+        searchInput = searchInput.slice(0, -specHintSuffix.length).trim();
+      } else {
+        // 完整输入是产品代码，不剥离也不用 specHint 过滤
+        specHint = null;
+        specHintSuffix = '';
+      }
+    }
     // 兜底：规格在中间的情况（如 qty 未提取到时）
     if (qty <= 0) {
       searchInput = searchInput.replace(/\s+\d+\s*(?:mg|iu|ml|mcg|g)/gi, '');
@@ -2844,6 +2869,18 @@ function parseQuoteInput(input) {
           return { product: p, diff: Math.abs(dose - specNum) };
         }).sort((a, b) => a.diff - b.diff);
         if (nearest.length > 0) hits = [nearest[0].product];
+      }
+    }
+    // specHint：产品名尾部无单位纯数字（如 Tirz5 → hint=5），仅当代码精确匹配失败时才用于规格过滤
+    // 排除：输入本身就是产品代码（如 RT10 直接命中代码，不应再用 10 过滤）
+    if (!specNum && specHint && hits.length > 1) {
+      const directCodeMatch = hits.some(p => normalizeStr(p.code) === normalizeStr(q));
+      if (!directCodeMatch) {
+        const hintHits = hits.filter(p => {
+          const firstNum = (p.spec || '').match(/(\d+)/);
+          return firstNum && parseInt(firstNum[1]) === specHint;
+        });
+        if (hintHits.length > 0) hits = hintHits;
       }
     }
 
