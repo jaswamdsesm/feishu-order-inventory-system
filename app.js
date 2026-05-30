@@ -2711,7 +2711,7 @@ function parseQuoteInput(input) {
     let specHint = null;
     let specHintSuffix = ''; // 被识别为 specHint 的尾部数字字符串，用于从 searchInput 中剥离
     if (!specNum) {
-      const tailNumMatch = q.match(/^([a-zA-Z][a-zA-Z0-9\-+_/ ]*)(\d+)\s*$/);
+      const tailNumMatch = q.match(/^([a-zA-Z].*?)(\d+)\s*$/);
       if (tailNumMatch) {
         specHint = parseInt(tailNumMatch[2]);
         specHintSuffix = tailNumMatch[2];
