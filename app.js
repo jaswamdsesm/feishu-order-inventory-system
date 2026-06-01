@@ -2767,7 +2767,8 @@ function parseQuoteInput(input) {
       searchInput = searchInput.replace(/\s+\d+\s*$/, '');
     }
     // 剥离尾部规格：1000mg / 10iu / 2ml（在数量剥离之后，确保 mg 在末尾）
-    searchInput = searchInput.replace(/\s+\d+\s*(?:mg|iu|ml|mcg|g)\s*$/gi, '');
+    // 同时处理：规格紧贴产品名（如 Reta10mg → Reta），不仅仅是前面有空格的情况
+    searchInput = searchInput.replace(/\s*\d+\s*(?:mg|iu|ml|mcg|g)\s*$/gi, '');
     // specHint：如果尾部数字被识别为规格 hint（无单位，紧贴字母），也从 searchInput 中剥离
     // 这样 GHKCU100 → searchInput = GHKCU，MOTSC10 → searchInput = MOTSC
     // 但要排除产品代码本身（如 RT10、MT1）：先检查完整输入是否能精确命中某个产品代码
@@ -2901,8 +2902,13 @@ function parseQuoteInput(input) {
       hits.forEach(p => { if (!groups[p.name]) groups[p.name] = []; groups[p.name].push(p); });
       const groupKeys = Object.keys(groups);
       if (groupKeys.length === 1) {
-        // 同一产品多规格：列出全部
-        groups[groupKeys[0]].forEach(p => { lines.push(formatQuoteProduct(p)); });
+        // 同一产品多规格：若只剩1条应传 qty（规格过滤后恰好剩1条的情况）
+        const groupItems = groups[groupKeys[0]];
+        if (groupItems.length === 1) {
+          lines.push(formatQuoteProduct(groupItems[0], qty || 0));
+        } else {
+          groupItems.forEach(p => { lines.push(formatQuoteProduct(p)); });
+        }
         addQuoteHistory(hits);
       } else {
         // 不同产品：列出全部
