@@ -2365,6 +2365,21 @@ function quoteFindByNameOrCode(input) {
     }
   }
 
+  // ===== 2c. 名称前缀匹配（如 RETA → Retatrutide, TIRZ → Tirzepatide） =====
+  if (kw.length >= 3) {
+    const nameHits = QUOTE_PRODUCTS.filter(p => normalizeStr(p.name).startsWith(kw));
+    if (nameHits.length > 0) {
+      const families = {};
+      nameHits.forEach(p => {
+        const pn = normalizeStr(p.name);
+        if (!families[pn]) families[pn] = true;
+      });
+      return Object.keys(families).reduce((acc, name) => {
+        return [...acc, ...findFamily(name)];
+      }, []);
+    }
+  }
+
   // ===== 第三步：编辑距离匹配 =====
   // 阈值：输入≤3字符时为1，否则为2（避免短输入误匹配太多）
   const editThreshold = kw.length <= 3 ? 1 : 2;
@@ -2706,17 +2721,6 @@ function parseQuoteInput(input) {
     if (specMatch) {
       specNum = parseInt(specMatch[1]);
     }
-    // 补充：产品名缩写 + 尾部纯数字（无单位），如 Tirz5/GHKCU100/MOTSC10 → specHint=数字
-    // 条件：没有规格单位、输入以字母打头且尾部跟数字（字母和数字中间可以无分隔符）
-    let specHint = null;
-    let specHintSuffix = ''; // 被识别为 specHint 的尾部数字字符串，用于从 searchInput 中剥离
-    if (!specNum) {
-      const tailNumMatch = q.match(/^([a-zA-Z].*?)(\d+)\s*$/);
-      if (tailNumMatch) {
-        specHint = parseInt(tailNumMatch[2]);
-        specHintSuffix = tailNumMatch[2];
-      }
-    }
 
     // === 3. 提取数量 qty ===
     // 注意：*Nvials 出现在规格数字（mg/iu/ml）后面时，是规格描述（每盒N支），不是数量
@@ -2756,6 +2760,24 @@ function parseQuoteInput(input) {
     if (!qty) { m = q.match(/^(\d+)([a-zA-Z].*)$/); if (m) qty = parseInt(m[1]); }
     // 格式F：3 NAD+（数量 + 空格 + 以字母开头的名称）
     if (!qty) { m = q.match(/^(\d+)\s+([a-zA-Z+].*)$/); if (m) qty = parseInt(m[1]); }
+
+    // === 2. 无单位规格数字提取（如 RETA10 → spec=10, GHKCU100 → spec=100） ===
+    // 必须在 qty 提取之后，先剥离 ×N 数量标记再从纯名称部分提取尾部数字
+    let specHint = null;
+    let specHintSuffix = '';
+    if (!specNum) {
+      let namePart = q;
+      // 剥离数量标记（×N, xN, *N）
+      namePart = namePart.replace(/\s*[xX×*]\s*\d+\s*(?:boxes|box|vials?|瓶|盒|支|个|pcs|packs?)?\s*$/i, '');
+      namePart = namePart.replace(/\s+\d+\s*(?:boxes|box|vials?|瓶|盒|支|个|pcs|packs?)\s*$/i, '');
+      // 剥离尾部纯数字（数量）
+      if (qty > 0) namePart = namePart.replace(/\s+\d+\s*$/, '');
+      const tailNumMatch = namePart.match(/^([a-zA-Z].*?)(\d+)\s*$/);
+      if (tailNumMatch) {
+        specHint = parseInt(tailNumMatch[2]);
+        specHintSuffix = tailNumMatch[2];
+      }
+    }
 
     // === 4. 剥离尾部数量和规格，得到产品名 searchInput ===
     let searchInput = q;
