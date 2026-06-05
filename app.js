@@ -816,6 +816,19 @@ function renderInventory() {
   updateBatchStockBtn();
 }
 
+function exportInventorySku() {
+  const kw = document.getElementById('inventory-search').value.trim().toLowerCase();
+  const filtered = kw ? fuzzyProductSearch(kw) : allProducts;
+  if (filtered.length === 0) { showToast('暂无产品可导出', 'warning'); return; }
+  const headers = ['产品名称', '简称', 'SKU', '当前库存', '预警阈值', '单位'];
+  const rows = filtered.map(p => [p.name || '', p.short_name || '', p.sku || '', p.current_stock, p.min_stock_alert, p.unit || '个']);
+  const BOM = '\uFEFF';
+  const csv = [headers.join(','), ...rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(','))].join('\n');
+  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
+  downloadBlob(blob, '产品SKU_' + new Date().toISOString().slice(0, 10) + '.csv');
+  showToast('已导出 ' + filtered.length + ' 条产品SKU', 'success');
+}
+
 function openProductModal(id) {
   document.getElementById('product-id').value = id || '';
   document.getElementById('product-modal-title').textContent = id ? '编辑产品' : '新增产品';
