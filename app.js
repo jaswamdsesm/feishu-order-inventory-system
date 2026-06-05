@@ -82,7 +82,7 @@ async function getExchangeRates() {
   } catch (e) {
     console.warn('汇率获取失败，使用默认值', e);
   }
-  return _exchangeRates || { EUR: 0.92, AUD: 1.53, CAD: 1.36 };
+  return _exchangeRates || { EUR: 0.92, AUD: 1.53, CAD: 1.36, GBP: 0.79, CNY: 7.25 };
 }
 
 // 更新结算货币汇率显示
@@ -2545,10 +2545,10 @@ async function appendCurrency(currency) {
   const rates = await getExchangeRates();
   const rate = rates[currency];
   if (!rate) { showToast('汇率获取失败', 'error'); return; }
-  const symbol = { EUR: '€', AUD: 'A$', CAD: 'C$' }[currency];
+  const symbol = { EUR: '€', AUD: 'A$', CAD: 'C$', GBP: '£' }[currency];
   // 先清除之前的所有换算后缀（匹配 =€, =A$, =C$ 开头的数字）
   el.querySelectorAll('div.text-sm.font-mono').forEach(div => {
-    div.textContent = div.textContent.replace(/=(?:€|A\$|C\$)[\d\.]+/g, '');
+    div.textContent = div.textContent.replace(/=(?:€|A\$|C\$|£)[\d\.]+/g, '');
   });
   // 再追加新币种换算
   el.querySelectorAll('div.text-sm.font-mono').forEach(div => {
@@ -2594,7 +2594,7 @@ function updateSummary(el, currency, rate) {
   if (count === 0) return;
   const existing = el.querySelector('.quote-summary');
   if (existing) existing.remove();
-  const labels = { USD: ['USD', ''], EUR: ['€', 'EUR'], AUD: ['A$', 'AUD'], CAD: ['C$', 'CAD'] };
+  const labels = { USD: ['USD', ''], EUR: ['€', 'EUR'], AUD: ['A$', 'AUD'], CAD: ['C$', 'CAD'], GBP: ['£', 'GBP'] };
   const [sym, code] = labels[currency] || ['USD', ''];
   const displayTotal = currency === 'USD' ? totalUSD : (totalUSD * rate).toFixed(2);
   const displayLabel = currency === 'USD' ? 'USD' : `${code}`;
@@ -3111,7 +3111,7 @@ let shippingTemplatesLoaded = false;
 const SHIP_TPL_KEY = 'oi_shipping_templates';
 const CURRENCY_SYMBOLS = { USD: '$', AUD: 'A$', CNY: '¥', EUR: '€', GBP: '£' };
 const PAYMENT_LABELS = { bank_transfer: '银行转账', paypal: 'PayPal', wise: 'Wise', crypto: '加密货币' };
-const CURRENCY_FULL = { USD: 'USD 美元', EUR: 'EUR 欧元', AUD: 'AUD 澳元', CAD: 'CAD 加元' };
+const CURRENCY_FULL = { USD: 'USD 美元', EUR: 'EUR 欧元', AUD: 'AUD 澳元', CAD: 'CAD 加元', GBP: 'GBP 英镑' };
 function curSym(c) { return CURRENCY_SYMBOLS[c] || c + ' '; }
 
 // ============ 结算货币 & 汇率 ============
@@ -3122,7 +3122,7 @@ let _cnyExchangeRate = 7.25; // 1 结算货币 = ? CNY（实时汇率，保存�
 
 function getCurrencyUsdRate(cur) {
   // 返回 1 cur = ? USD
-  const rates = { USD: 1, EUR: 1/0.92, AUD: 1/1.53, CAD: 1/1.36 };
+  const rates = { USD: 1, EUR: 1/0.92, AUD: 1/1.53, CAD: 1/1.36, GBP: 1/0.79 };
   return rates[cur] || 1;
 }
 
