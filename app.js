@@ -816,16 +816,17 @@ function renderInventory() {
   updateBatchStockBtn();
 }
 
-function exportInventorySku() {
+async function exportInventorySku() {
   const kw = document.getElementById('inventory-search').value.trim().toLowerCase();
   const filtered = kw ? fuzzyProductSearch(kw) : allProducts;
   if (filtered.length === 0) { showToast('暂无产品可导出', 'warning'); return; }
   const headers = ['产品名称', '简称', 'SKU', '当前库存', '预警阈值', '单位'];
   const rows = filtered.map(p => [p.name || '', p.short_name || '', p.sku || '', p.current_stock, p.min_stock_alert, p.unit || '个']);
   const BOM = '\uFEFF';
-  const csv = [headers.join(','), ...rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(','))].join('\n');
+  const esc = c => '"' + String(c).replace(/"/g, '""') + '"';
+  const csv = [headers.map(esc).join(','), ...rows.map(r => r.map(esc).join(','))].join('\n');
   const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
-  downloadBlob(blob, '产品SKU_' + new Date().toISOString().slice(0, 10) + '.csv');
+  await downloadBlobPicker(blob, '产品SKU_' + new Date().toISOString().slice(0, 10) + '.csv');
   showToast('已导出 ' + filtered.length + ' 条产品SKU', 'success');
 }
 
@@ -3116,6 +3117,28 @@ function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = filename;
   a.click(); URL.revokeObjectURL(url);
+}
+
+// 支持文件选择对话框的下载（Chrome/Edge showSaveFilePicker）
+async function downloadBlobPicker(blob, defaultName) {
+  // Chrome / Edge 支持 showSaveFilePicker
+  if (typeof window.showSaveFilePicker === 'function') {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: defaultName,
+        types: [{ description: 'CSV 文件', accept: { 'text/csv': ['.csv'] } }]
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch (e) {
+      // 用户取消或失败，降级为普通下载
+      if (e.name === 'AbortError') return;
+    }
+  }
+  // 降级：普通浏览器下载
+  downloadBlob(blob, defaultName);
 }
 
 // ============ 运费助手 ============
