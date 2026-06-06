@@ -113,6 +113,9 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
       <button onclick="switchPage('distribution')" class="nav-btn w-full flex items-center gap-3 px-5 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-none">
         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
         <span>分销管理</span></button>
+      <button onclick="switchPage('price-schemes')" class="nav-btn w-full flex items-center gap-3 px-5 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-none">
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185z"/></svg>
+        <span>价格体系</span></button>
       <div id="nav-admin-only" class="hidden">
         <p class="px-5 pt-4 pb-1 text-xs text-gray-400 font-bold uppercase tracking-wider">管理</p>
         <button onclick="switchPage('users')" class="nav-btn w-full flex items-center gap-3 px-5 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-none"><svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
@@ -284,6 +287,14 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
       <div class="p-4 md:p-6 pb-3 flex-shrink-0">
         <h2 class="font-bold text-lg mb-1">报价助手</h2>
         <p class="text-xs text-gray-400 mb-3"></p>
+        <!-- 价格体系切换 -->
+        <div class="flex items-center gap-2 mb-3 bg-gray-50 rounded-xl px-3 py-2">
+          <span class="text-xs text-gray-500 whitespace-nowrap">价格体系</span>
+          <select id="scheme-selector" onchange="onSchemeChange()" class="flex-1 text-xs px-2 py-1.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
+            <option value="">— 内置价格 —</option>
+          </select>
+          <button onclick="switchPage('price-schemes')" class="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-500 transition-colors whitespace-nowrap">管理体系</button>
+        </div>
         <div class="flex gap-2">
           <textarea id="quote-input" rows="3" placeholder="输入询价内容，每行一个，如：&#10;RT&#10;RT5 x3&#10;BPC157+TB500&#10;NAD+ 1000mg X 3" class="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm resize-none"></textarea>
           <button onclick="handleQuoteSearch()" class="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-xl font-medium whitespace-nowrap">查询</button>
@@ -406,6 +417,72 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
           </div>
           <div id="shipping-tpl-empty" class="hidden py-8 text-center text-sm text-gray-400">暂无运费模板，点击上方"新增模板"添加</div>
         </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 价格体系管理 -->
+    <div id="page-price-schemes" class="page flex-1 p-4 md:p-6 space-y-4 overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <h2 class="font-bold text-lg">价格体系</h2>
+        <button onclick="openSchemeEditModal(null)" class="btn-touch flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2.5 rounded-xl transition-colors font-medium">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>新建体系</button>
+      </div>
+      <p class="text-xs text-gray-400">每套价格体系可独立为每个产品设置 USD 单价，报价助手切换体系后自动使用对应价格。</p>
+      <div id="price-scheme-list" class="space-y-2"></div>
+    </div>
+
+    <!-- 价格体系编辑弹窗 -->
+    <div id="scheme-edit-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-full max-w-md shadow-xl p-6 space-y-4">
+        <h3 id="scheme-modal-title" class="font-bold text-base">新建价格体系</h3>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">体系名称 *</label>
+          <input id="scheme-name-input" type="text" placeholder="如：澳洲价格、欧洲价格" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">描述（选填）</label>
+          <input id="scheme-desc-input" type="text" placeholder="简短说明" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="scheme-default-input" type="checkbox" class="w-4 h-4 rounded"/>
+          <label class="text-sm text-gray-600">设为默认体系（进入报价助手时自动选中）</label>
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button onclick="closeSchemeEditModal()" class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">取消</button>
+          <button onclick="saveScheme()" class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 产品定价弹窗 -->
+    <div id="scheme-item-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4">
+      <div class="bg-white rounded-2xl w-full max-w-2xl shadow-xl flex flex-col max-h-[90vh]">
+        <div class="p-5 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+          <h3 id="scheme-item-modal-title" class="font-bold text-base">产品定价</h3>
+          <button onclick="closeSchemeItemModal()" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="p-4 border-b border-gray-100 flex gap-2 flex-shrink-0">
+          <input id="scheme-item-filter" type="text" placeholder="搜索产品名/代码..." oninput="filterSchemeItems()" class="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+          <button onclick="syncDefaultPrices()" class="text-xs px-3 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 whitespace-nowrap">同步内置价格</button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4">
+          <table class="w-full text-sm">
+            <thead class="sticky top-0 bg-gray-50">
+              <tr class="text-xs text-gray-500">
+                <th class="text-left px-3 py-2 font-medium">代码</th>
+                <th class="text-left px-3 py-2 font-medium">产品/规格</th>
+                <th class="text-left px-2 py-2 font-medium">内置价</th>
+                <th class="text-left px-2 py-2 font-medium">本体系价格(USD)</th>
+              </tr>
+            </thead>
+            <tbody id="scheme-item-tbody"></tbody>
+          </table>
+        </div>
+        <div class="p-4 border-t border-gray-100 flex-shrink-0">
+          <button id="save-scheme-items-btn" onclick="saveSchemeItems()" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">保存所有定价</button>
         </div>
       </div>
     </div>
