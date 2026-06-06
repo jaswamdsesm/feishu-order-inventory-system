@@ -407,6 +407,13 @@ let currentPage = 'dashboard', pageRefreshTimers = {}, editingOrderId = null, or
 let allDistributionRelations = []; // 分销关系缓存
 let originalStock = 0;  // 编辑产品时记录原始库存，用于写变动日志
 
+// ============ 价格体系 ============
+let allPriceSchemes = [];           // 所有体系 [{id, name, description, is_default}]
+let activePriceScheme = null;       // 当前激活体系 {id, name, ...}
+let activeSchemePrices = {};        // {product_code: price} 当前体系价格映射
+let priceSchemeLoaded = false;
+let editingSchemeId = null;         // 价格体系管理页面编辑中的体系 id
+
 // ============ 初始化 ============
 async function init() {
   try {
@@ -658,7 +665,7 @@ function switchPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pe = document.getElementById('page-' + page);
   if (pe) pe.classList.add('active');
-  const titles = { dashboard: '仪表盘', inventory: '库存管理', orders: '订单管理', logs: '变动日志', users: '用户管理', quote: '报价助手', shipping: '运费助手', distribution: '分销管理' };
+  const titles = { dashboard: '仪表盘', inventory: '库存管理', orders: '订单管理', logs: '变动日志', users: '用户管理', quote: '报价助手', shipping: '运费助手', distribution: '分销管理', 'price-schemes': '价格体系' };
   const te = document.getElementById('page-title');
   if (te) te.textContent = titles[page] || '';
   clearAllRefreshTimers();
@@ -667,9 +674,10 @@ function switchPage(page) {
   else if (page === 'orders') { startPageRefresh(page, () => Promise.all([loadOrders(), loadWeightProducts()]).then(() => renderOrders())); }
   else if (page === 'logs') { startPageRefresh(page, () => loadInventoryLogs().then(renderLogs)); }
   else if (page === 'users' && currentRole === 'super_admin') { renderUsers(); }
-  else if (page === 'quote') { renderQuotePage(); }
+  else if (page === 'quote') { loadPriceSchemes().then(renderQuotePage); }
   else if (page === 'shipping') { loadWeightProducts().then(() => loadShippingTemplates().then(renderShippingPage)); }
   else if (page === 'distribution') { loadDistributionRelations().then(() => { renderDistributionRelations(); loadDistributionStats(); }); }
+  else if (page === 'price-schemes') { renderPriceSchemePage(); }
 }
 function clearAllRefreshTimers() { Object.values(pageRefreshTimers).forEach(t => clearInterval(t)); pageRefreshTimers = {}; }
 function startPageRefresh(page, fn) { clearAllRefreshTimers(); fn(); pageRefreshTimers[page] = setInterval(fn, 30000); }
@@ -2634,13 +2642,22 @@ function showTotalSummary() {
   updateSummary(el, 'USD', 1);
 }
 
-// 报价产品行格式化（统一处理 alias 显示）
+// 获取产品在当前价格体系下的价格
+function getActivePrice(p) {
+  if (activePriceScheme && activeSchemePrices[p.code] != null) {
+    return activeSchemePrices[p.code];
+  }
+  return p.price; // 回退到内置价格
+}
+
+// 报价产品行格式化（统一处理 alias 显示，支持多价格体系）
 function formatQuoteProduct(p, qty) {
   const codeDisplay = p.alias ? `${p.code}（${p.alias}）` : p.code;
+  const unitPrice = getActivePrice(p);
   if (qty > 0) {
-    return `${p.name}：${codeDisplay} ${p.spec} USD${p.price} x${qty} = USD${p.price * qty}`;
+    return `${p.name}：${codeDisplay} ${p.spec} USD${unitPrice} x${qty} = USD${+(unitPrice * qty).toFixed(2)}`;
   }
-  return `${p.name}：${codeDisplay} ${p.spec} USD${p.price}`;
+  return `${p.name}：${codeDisplay} ${p.spec} USD${unitPrice}`;
 }
 
 // ============ 输入解析 ============
@@ -3139,6 +3156,293 @@ async function downloadBlobPicker(blob, defaultName) {
   }
   // 降级：普通浏览器下载
   downloadBlob(blob, defaultName);
+}
+
+// ============ 价格体系管理 ============
+
+async function loadPriceSchemes() {
+  if (priceSchemeLoaded) return;
+  try {
+    const { data, error } = await sb.from('price_schemes').select('*').order('created_at');
+    if (error) throw error;
+    allPriceSchemes = data || [];
+    priceSchemeLoaded = true;
+    // 恢复上次选择的体系
+    const savedId = localStorage.getItem('oi_active_scheme_id');
+    const found = savedId ? allPriceSchemes.find(s => s.id === savedId) : null;
+    const def = allPriceSchemes.find(s => s.is_default) || allPriceSchemes[0] || null;
+    await switchPriceScheme(found ? found.id : (def ? def.id : null));
+  } catch(e) {
+    console.warn('loadPriceSchemes error', e);
+    allPriceSchemes = [];
+  }
+}
+
+async function switchPriceScheme(schemeId) {
+  if (!schemeId) {
+    activePriceScheme = null;
+    activeSchemePrices = {};
+    renderSchemeSelector();
+    return;
+  }
+  try {
+    const { data, error } = await sb.from('price_scheme_items')
+      .select('product_code,price')
+      .eq('scheme_id', schemeId);
+    if (error) throw error;
+    const scheme = allPriceSchemes.find(s => s.id === schemeId);
+    activePriceScheme = scheme || null;
+    activeSchemePrices = {};
+    (data || []).forEach(row => { activeSchemePrices[row.product_code] = parseFloat(row.price); });
+    localStorage.setItem('oi_active_scheme_id', schemeId);
+    renderSchemeSelector();
+  } catch(e) {
+    console.warn('switchPriceScheme error', e);
+    activePriceScheme = null;
+    activeSchemePrices = {};
+    renderSchemeSelector();
+  }
+}
+
+function renderSchemeSelector() {
+  const el = document.getElementById('scheme-selector');
+  if (!el) return;
+  el.innerHTML = '';
+  // "默认"选项（使用内置价格）
+  const defOpt = document.createElement('option');
+  defOpt.value = '';
+  defOpt.textContent = '— 内置价格 —';
+  el.appendChild(defOpt);
+  allPriceSchemes.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name;
+    el.appendChild(opt);
+  });
+  el.value = activePriceScheme ? activePriceScheme.id : '';
+}
+
+async function onSchemeChange() {
+  const el = document.getElementById('scheme-selector');
+  if (!el) return;
+  const id = el.value;
+  await switchPriceScheme(id || null);
+  // 刷新报价结果
+  const inputEl = document.getElementById('quote-input');
+  if (inputEl && inputEl.value.trim()) handleQuoteSearch();
+}
+
+// ========== 价格体系管理页 ==========
+
+async function renderPriceSchemePage() {
+  priceSchemeLoaded = false; // 强制刷新
+  await loadPriceSchemes();
+  renderSchemeList();
+}
+
+function renderSchemeList() {
+  const container = document.getElementById('price-scheme-list');
+  if (!container) return;
+  if (allPriceSchemes.length === 0) {
+    container.innerHTML = '<p class="text-sm text-gray-400 text-center py-8">暂无价格体系，点击「新建」创建</p>';
+    return;
+  }
+  container.innerHTML = allPriceSchemes.map(s => `
+    <div class="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:border-blue-200 transition-colors">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="font-medium text-sm">${escHtml(s.name)}</span>
+          ${s.is_default ? '<span class="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded">默认</span>' : ''}
+        </div>
+        ${s.description ? `<p class="text-xs text-gray-400 mt-0.5 truncate">${escHtml(s.description)}</p>` : ''}
+      </div>
+      <div class="flex gap-1.5 flex-shrink-0">
+        <button onclick="openSchemeItemModal('${s.id}','${escHtml(s.name)}')" class="text-xs px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors">定价</button>
+        <button onclick="openSchemeEditModal('${s.id}')" class="text-xs px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors">编辑</button>
+        <button onclick="confirmDeleteScheme('${s.id}','${escHtml(s.name)}')" class="text-xs px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors">删除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openSchemeEditModal(id) {
+  editingSchemeId = id || null;
+  const scheme = id ? allPriceSchemes.find(s => s.id === id) : null;
+  document.getElementById('scheme-modal-title').textContent = id ? '编辑价格体系' : '新建价格体系';
+  document.getElementById('scheme-name-input').value = scheme ? scheme.name : '';
+  document.getElementById('scheme-desc-input').value = scheme ? (scheme.description || '') : '';
+  document.getElementById('scheme-default-input').checked = scheme ? scheme.is_default : false;
+  document.getElementById('scheme-edit-modal').classList.remove('hidden');
+}
+
+function closeSchemeEditModal() {
+  document.getElementById('scheme-edit-modal').classList.add('hidden');
+  editingSchemeId = null;
+}
+
+async function saveScheme() {
+  const name = document.getElementById('scheme-name-input').value.trim();
+  const desc = document.getElementById('scheme-desc-input').value.trim();
+  const isDef = document.getElementById('scheme-default-input').checked;
+  if (!name) { showToast('请输入体系名称', 'warning'); return; }
+
+  try {
+    const { data, error } = await sb.rpc('upsert_price_scheme', {
+      p_id: editingSchemeId || null,
+      p_name: name,
+      p_description: desc,
+      p_is_default: isDef
+    });
+    if (error) throw error;
+    showToast(editingSchemeId ? '已更新' : '已创建', 'success');
+    closeSchemeEditModal();
+    priceSchemeLoaded = false;
+    await renderPriceSchemePage();
+  } catch(e) {
+    showToast('保存失败：' + e.message, 'error');
+  }
+}
+
+async function confirmDeleteScheme(id, name) {
+  if (!confirm(`确定删除价格体系「${name}」？该体系下的所有定价将被同步删除，操作不可撤销。`)) return;
+  try {
+    const { error } = await sb.rpc('delete_price_scheme', { p_id: id });
+    if (error) throw error;
+    showToast('已删除', 'success');
+    if (activePriceScheme && activePriceScheme.id === id) {
+      activePriceScheme = null; activeSchemePrices = {};
+      localStorage.removeItem('oi_active_scheme_id');
+    }
+    priceSchemeLoaded = false;
+    await renderPriceSchemePage();
+  } catch(e) {
+    showToast('删除失败：' + e.message, 'error');
+  }
+}
+
+// ===== 价格明细弹窗（定价管理）=====
+let schemeItemModalId = null;
+let schemeItemsCache = {};   // schemeId -> [{product_code, price}]
+let schemeItemFilter = '';   // 搜索关键词
+
+async function openSchemeItemModal(schemeId, schemeName) {
+  schemeItemModalId = schemeId;
+  document.getElementById('scheme-item-modal-title').textContent = `${schemeName} — 产品定价`;
+  document.getElementById('scheme-item-modal').classList.remove('hidden');
+  document.getElementById('scheme-item-filter').value = '';
+  schemeItemFilter = '';
+  await loadSchemeItems(schemeId);
+}
+
+function closeSchemeItemModal() {
+  document.getElementById('scheme-item-modal').classList.add('hidden');
+  schemeItemModalId = null;
+}
+
+async function loadSchemeItems(schemeId) {
+  try {
+    const { data, error } = await sb.from('price_scheme_items')
+      .select('product_code,price')
+      .eq('scheme_id', schemeId);
+    if (error) throw error;
+    const map = {};
+    (data || []).forEach(r => { map[r.product_code] = parseFloat(r.price); });
+    schemeItemsCache[schemeId] = map;
+    renderSchemeItemTable();
+  } catch(e) {
+    showToast('加载定价失败：' + e.message, 'error');
+  }
+}
+
+function renderSchemeItemTable() {
+  const tbody = document.getElementById('scheme-item-tbody');
+  if (!tbody) return;
+  const priceMap = schemeItemsCache[schemeItemModalId] || {};
+  const kw = schemeItemFilter.toLowerCase();
+  const filtered = QUOTE_PRODUCTS.filter(p =>
+    !kw || p.name.toLowerCase().includes(kw) || p.code.toLowerCase().includes(kw)
+  );
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-xs text-gray-400">无匹配产品</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map((p, i) => {
+    const cur = priceMap[p.code];
+    const hasCustom = cur != null;
+    const displayPrice = hasCustom ? cur : p.price;
+    return `<tr class="border-b border-gray-50 hover:bg-gray-50">
+      <td class="py-2 px-3 text-xs text-gray-500">${escHtml(p.code)}</td>
+      <td class="py-2 px-3 text-xs">${escHtml(p.name)} <span class="text-gray-400">${escHtml(p.spec)}</span></td>
+      <td class="py-2 px-2 text-xs text-gray-400">${p.price}</td>
+      <td class="py-2 px-2">
+        <input type="number" step="0.01" min="0" value="${displayPrice}"
+          data-code="${escHtml(p.code)}"
+          class="scheme-price-input w-20 px-2 py-1 text-xs rounded-lg border ${hasCustom ? 'border-blue-300 bg-blue-50' : 'border-gray-200'} focus:outline-none focus:ring-1 focus:ring-blue-400"
+          oninput="onSchemePriceInput(this)"
+        />
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filterSchemeItems() {
+  schemeItemFilter = document.getElementById('scheme-item-filter').value.trim();
+  renderSchemeItemTable();
+}
+
+function onSchemePriceInput(el) {
+  const code = el.dataset.code;
+  const val = parseFloat(el.value);
+  const priceMap = schemeItemsCache[schemeItemModalId] || {};
+  if (!isNaN(val) && val >= 0) {
+    el.classList.add('border-blue-300', 'bg-blue-50');
+    el.classList.remove('border-gray-200');
+    priceMap[code] = val;
+  }
+  schemeItemsCache[schemeItemModalId] = priceMap;
+}
+
+async function saveSchemeItems() {
+  const priceMap = schemeItemsCache[schemeItemModalId] || {};
+  const entries = Object.entries(priceMap);
+  if (entries.length === 0) { showToast('没有定价数据', 'warning'); return; }
+  const btn = document.getElementById('save-scheme-items-btn');
+  btn.disabled = true; btn.textContent = '保存中...';
+  try {
+    // 批量 upsert via RPC
+    for (const [code, price] of entries) {
+      const { error } = await sb.rpc('upsert_price_scheme_item', {
+        p_scheme_id: schemeItemModalId,
+        p_product_code: code,
+        p_price: price
+      });
+      if (error) throw error;
+    }
+    showToast('定价已保存', 'success');
+    // 如果当前激活体系就是这个，刷新价格
+    if (activePriceScheme && activePriceScheme.id === schemeItemModalId) {
+      activeSchemePrices = { ...priceMap };
+    }
+  } catch(e) {
+    showToast('保存失败：' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '保存所有定价';
+  }
+}
+
+async function syncDefaultPrices() {
+  // 将 QUOTE_PRODUCTS 的内置价格一键批量写入当前打开的体系
+  if (!schemeItemModalId) return;
+  if (!confirm('将把 QUOTE_PRODUCTS 内置价格全部同步到本体系（不会删除已有自定义价格，仅补充/覆盖），确认？')) return;
+  const priceMap = schemeItemsCache[schemeItemModalId] || {};
+  QUOTE_PRODUCTS.forEach(p => { priceMap[p.code] = p.price; });
+  schemeItemsCache[schemeItemModalId] = priceMap;
+  renderSchemeItemTable();
+  showToast('已填入内置价格，点「保存所有定价」提交', 'info');
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ============ 运费助手 ============
