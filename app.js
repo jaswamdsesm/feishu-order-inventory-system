@@ -2250,6 +2250,10 @@ const QUOTE_PRODUCTS = [
   { name:'Acetic Acid 0.6%', code:'AA', spec:'3ml*10vials', price:8 },
   { name:'L-carnitine 600mg', code:'LC600', spec:'10ml*10vials', price:26 },
   { name:'B-12', code:'B-12V', spec:'10mg*10vials', price:30 },
+  { name:'Adamax', code:'AX5', spec:'5mg*10vials', price:54 },
+  { name:'Adamax', code:'AX10', spec:'10mg*10vials', price:75 },
+  { name:'PIN', code:'PIN5', spec:'5mg*10vials', price:30 },
+  { name:'PIN', code:'PIN10', spec:'10mg*10vials', price:47 },
 ];
 
 // 报价会话历史（用于导出报价单）
