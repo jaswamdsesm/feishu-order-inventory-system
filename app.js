@@ -925,7 +925,9 @@ async function deleteProduct(id) {
 
 // ============ 自定义日期选择器 ============
 let _dpState = { targetId: null, viewYear: 0, viewMonth: 0 };
-const _dpCallbacks = { 'order-date-from': () => renderOrders(), 'order-date-to': () => renderOrders(), 'order-date': () => {} };
+const _dpCallbacks = { 'order-date-from': debounceRenderOrders, 'order-date-to': debounceRenderOrders, 'order-date': () => {} };
+let _renderOrdersTimer = null;
+function debounceRenderOrders() { clearTimeout(_renderOrdersTimer); _renderOrdersTimer = setTimeout(() => renderOrders(), 300); }
 
 function setThisMonth() {
   const now = new Date();
@@ -935,6 +937,19 @@ function setThisMonth() {
   const lastDay = `${y}-${String(m).padStart(2, '0')}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
   document.getElementById('order-date-from').value = firstDay;
   document.getElementById('order-date-to').value = lastDay;
+  renderOrders();
+}
+
+function resetOrderFilters() {
+  document.getElementById('order-search').value = '';
+  document.getElementById('order-date-from').value = '';
+  document.getElementById('order-date-to').value = '';
+  document.getElementById('order-country-filter').value = '';
+  document.getElementById('order-owner-filter').value = '';
+  selectDropdown('order-status-dropdown', '全部状态', '');
+  selectDropdown('order-dist-dropdown', '全部', '');
+  selectDropdown('order-sort-dropdown', '下单时间 ↓', 'created_at');
+  document.getElementById('order-sort-dropdown').dataset.sortDir = 'desc';
   renderOrders();
 }
 
@@ -1107,7 +1122,7 @@ function renderOrders() {
     const canShip = o.status === 'pending' && isAdmin;
     const shipBtn = canShip ? `<button onclick="openShipModal('${o.id}')" class="text-xs text-green-600 hover:underline mr-2"><svg class="w-3.5 h-3.5 inline-block mr-0.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.75a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h-6m9 0h2.25a1.125 1.125 0 001.125-1.125V14.25m0 0H21M3 14.25V6.75A2.25 2.25 0 015.25 4.5h13.5A2.25 2.25 0 0121 6.75v7.5M3 14.25H21"/></svg>发货</button>` : '';
     const trackHtml = o.tracking_no ? `<p class="text-xs text-green-600"><svg class="w-3.5 h-3.5 inline-block mr-0.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>单号：${esc(o.tracking_no)}</p>` : '';
-    const canEdit = (isSuper || isAdmin) && o.status !== 'completed';
+    const canEdit = isSuper && o.status !== 'completed';
     const btnHtml = canEdit ? `<button onclick="openOrderModal('${o.id}')" class="text-xs text-blue-500 hover:underline mr-2">编辑</button><button onclick="deleteOrder('${o.id}')" class="text-xs text-red-500 hover:underline">删除</button>` : '';
     const deliveredBtn = (o.status === 'shipped' && isAdmin) ? `<button onclick="markDelivered('${o.id}')" class="text-xs text-blue-600 hover:underline mr-2"><svg class="w-3.5 h-3.5 inline-block mr-0.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>已送达</button>` : '';
     // 分销标签
