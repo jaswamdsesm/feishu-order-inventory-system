@@ -925,9 +925,7 @@ async function deleteProduct(id) {
 
 // ============ 自定义日期选择器 ============
 let _dpState = { targetId: null, viewYear: 0, viewMonth: 0 };
-const _dpCallbacks = { 'order-date-from': debounceRenderOrders, 'order-date-to': debounceRenderOrders, 'order-date': () => {} };
-let _renderOrdersTimer = null;
-function debounceRenderOrders() { clearTimeout(_renderOrdersTimer); _renderOrdersTimer = setTimeout(() => renderOrders(), 300); }
+const _dpCallbacks = { 'order-date-from': () => {}, 'order-date-to': () => {}, 'order-date': () => {} };
 
 function setThisMonth() {
   const now = new Date();
