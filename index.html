@@ -218,6 +218,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
           <div class="relative" id="wrap-date-to">
             <input type="text" id="order-date-to" readonly placeholder="截止日期" onfocus="openDatePicker('order-date-to')" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer w-[120px]"/>
           </div>
+          <button onclick="renderOrders()" class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors whitespace-nowrap">查询</button>
           <button onclick="resetOrderFilters()" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white hover:bg-gray-50 transition-colors text-gray-500 whitespace-nowrap">重置筛选</button>
           <!-- 排序 - 自定义下拉 -->
           <div class="relative" id="order-sort-dropdown">
@@ -755,7 +756,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script async src="https://lf-scm-cn.feishucdn.com/lark/op/h5-js-sdk-1.5.44.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script defer src="app.js?v=20260610d"></script>
+<script defer src="app.js?v=20260610e"></script>
 
 <!-- 批量导入产品弹窗 -->
 <div id="modal-batch-product" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/30" style="z-index:60">
