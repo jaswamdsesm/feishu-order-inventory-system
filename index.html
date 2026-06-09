@@ -173,64 +173,64 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
 
     <!-- 订单管理 -->
     <div id="page-orders" class="page flex-1 p-4 md:p-6 space-y-4 overflow-y-auto">
-      <div class="flex flex-col md:flex-row md:items-center gap-3">
-        <div class="flex-1 relative"><input type="text" id="order-search" placeholder="搜索订单号/客户名称…" oninput="renderOrders()" class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"/>
-          <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg></div>
-        <div class="flex flex-wrap items-center gap-2">
+      <div class="flex flex-col md:flex-row md:items-center gap-2">
+        <div class="flex-1 relative"><input type="text" id="order-search" placeholder="搜索订单号/客户名称…" oninput="renderOrders()" class="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"/>
+          <svg class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg></div>
+        <div class="flex flex-wrap items-center gap-1.5">
           <!-- 状态筛选 - 自定义下拉 -->
           <div class="relative" id="order-status-dropdown">
-            <button onclick="toggleDropdown('order-status-dropdown')" class="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white hover:bg-gray-50 transition-colors whitespace-nowrap min-w-[100px] justify-between">
+            <button onclick="toggleDropdown('order-status-dropdown')" class="flex items-center gap-1 px-2.5 py-2 rounded-lg border border-gray-200 text-xs bg-white hover:bg-gray-50 transition-colors whitespace-nowrap min-w-[80px] justify-between">
               <span id="order-status-label">全部状态</span>
-              <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+              <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
             </button>
-            <div class="hidden absolute top-full left-0 mt-1 w-32 bg-white rounded-xl border border-gray-200 shadow-lg z-30 py-1">
-              <div onclick="selectDropdown('order-status-dropdown','全部状态','');renderOrders()" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">全部状态</div>
-              <div onclick="selectDropdown('order-status-dropdown','待处理','pending');renderOrders()" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">待处理</div>
-              <div onclick="selectDropdown('order-status-dropdown','已发货','shipped');renderOrders()" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">已发货</div>
-              <div onclick="selectDropdown('order-status-dropdown','已完成','completed');renderOrders()" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">已完成</div>
-              <div onclick="selectDropdown('order-status-dropdown','已取消','cancelled');renderOrders()" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">已取消</div>
+            <div class="hidden absolute top-full left-0 mt-1 w-28 bg-white rounded-lg border border-gray-200 shadow-lg z-30 py-1">
+              <div onclick="selectDropdown('order-status-dropdown','全部状态','');renderOrders()" class="dropdown-item px-2.5 py-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded-md mx-1">全部状态</div>
+              <div onclick="selectDropdown('order-status-dropdown','待处理','pending');renderOrders()" class="dropdown-item px-2.5 py-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded-md mx-1">待处理</div>
+              <div onclick="selectDropdown('order-status-dropdown','已发货','shipped');renderOrders()" class="dropdown-item px-2.5 py-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded-md mx-1">已发货</div>
+              <div onclick="selectDropdown('order-status-dropdown','已完成','completed');renderOrders()" class="dropdown-item px-2.5 py-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded-md mx-1">已完成</div>
+              <div onclick="selectDropdown('order-status-dropdown','已取消','cancelled');renderOrders()" class="dropdown-item px-2.5 py-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded-md mx-1">已取消</div>
             </div>
           </div>
           <!-- 归属销售筛选 -->
-          <select id="order-owner-filter" onchange="renderOrders()" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[100px]">
+          <select id="order-owner-filter" onchange="renderOrders()" class="px-2.5 py-2 rounded-lg border border-gray-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[80px]">
             <option value="">全部销售</option>
           </select>
           <!-- 分销筛选 -->
           <div class="relative" id="order-dist-dropdown">
-            <button onclick="toggleDropdown('order-dist-dropdown')" class="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white hover:bg-gray-50 transition-colors whitespace-nowrap min-w-[100px] justify-between">
+            <button onclick="toggleDropdown('order-dist-dropdown')" class="flex items-center gap-1 px-2.5 py-2 rounded-lg border border-gray-200 text-xs bg-white hover:bg-gray-50 transition-colors whitespace-nowrap min-w-[80px] justify-between">
               <span id="order-dist-label">全部分销</span>
-              <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+              <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
             </button>
-            <div class="hidden absolute top-full left-0 mt-1 w-32 bg-white rounded-xl border border-gray-200 shadow-lg z-30 py-1">
-              <div onclick="selectDropdown('order-dist-dropdown','全部分销','');renderOrders()" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">全部分销</div>
-              <div onclick="selectDropdown('order-dist-dropdown','分销订单','yes');renderOrders()" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">分销订单</div>
-              <div onclick="selectDropdown('order-dist-dropdown','非分销','no');renderOrders()" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">非分销</div>
+            <div class="hidden absolute top-full left-0 mt-1 w-28 bg-white rounded-lg border border-gray-200 shadow-lg z-30 py-1">
+              <div onclick="selectDropdown('order-dist-dropdown','全部分销','');renderOrders()" class="dropdown-item px-2.5 py-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded-md mx-1">全部分销</div>
+              <div onclick="selectDropdown('order-dist-dropdown','分销订单','yes');renderOrders()" class="dropdown-item px-2.5 py-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded-md mx-1">分销订单</div>
+              <div onclick="selectDropdown('order-dist-dropdown','非分销','no');renderOrders()" class="dropdown-item px-2.5 py-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded-md mx-1">非分销</div>
             </div>
           </div>
           <!-- 国家筛选 -->
-          <input type="text" id="order-country-filter" placeholder="国家筛选…" oninput="renderOrders()" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[90px]"/>
+          <input type="text" id="order-country-filter" placeholder="国家筛选" oninput="renderOrders()" class="px-2.5 py-2 rounded-lg border border-gray-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 w-[75px]"/>
           <!-- 日期筛选 -->
-          <button onclick="setThisMonth()" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white hover:bg-gray-50 transition-colors whitespace-nowrap text-gray-600">本月</button>
+          <button onclick="setThisMonth()" class="px-2.5 py-2 rounded-lg border border-gray-200 text-xs bg-white hover:bg-gray-50 transition-colors whitespace-nowrap text-gray-600">本月</button>
           <div class="relative" id="wrap-date-from">
-            <input type="text" id="order-date-from" readonly placeholder="起始日期" onfocus="openDatePicker('order-date-from')" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer w-[120px]"/>
+            <input type="text" id="order-date-from" readonly placeholder="起始日期" onfocus="openDatePicker('order-date-from')" class="px-2.5 py-2 rounded-lg border border-gray-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer w-[105px]"/>
           </div>
           <span class="text-gray-300 text-xs">至</span>
           <div class="relative" id="wrap-date-to">
-            <input type="text" id="order-date-to" readonly placeholder="截止日期" onfocus="openDatePicker('order-date-to')" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer w-[120px]"/>
+            <input type="text" id="order-date-to" readonly placeholder="截止日期" onfocus="openDatePicker('order-date-to')" class="px-2.5 py-2 rounded-lg border border-gray-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer w-[105px]"/>
           </div>
-          <button onclick="renderOrders()" class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors whitespace-nowrap">查询</button>
-          <button onclick="resetOrderFilters()" class="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white hover:bg-gray-50 transition-colors text-gray-500 whitespace-nowrap">重置筛选</button>
+          <button onclick="renderOrders()" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors whitespace-nowrap">查询</button>
+          <button onclick="resetOrderFilters()" class="px-2.5 py-2 rounded-lg border border-gray-200 text-xs bg-white hover:bg-gray-50 transition-colors text-gray-500 whitespace-nowrap">重置</button>
           <!-- 排序 - 自定义下拉 -->
           <div class="relative" id="order-sort-dropdown">
-            <button onclick="toggleDropdown('order-sort-dropdown')" class="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white hover:bg-gray-50 transition-colors whitespace-nowrap min-w-[100px] justify-between">
+            <button onclick="toggleDropdown('order-sort-dropdown')" class="flex items-center gap-1 px-2.5 py-2 rounded-lg border border-gray-200 text-xs bg-white hover:bg-gray-50 transition-colors whitespace-nowrap min-w-[80px] justify-between">
               <span id="order-sort-label">最新优先</span>
-              <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+              <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
             </button>
-            <div class="hidden absolute top-full left-0 mt-1 w-32 bg-white rounded-xl border border-gray-200 shadow-lg z-30 py-1">
-              <div onclick="selectSort('最新优先','created_at','desc')" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">最新优先</div>
-              <div onclick="selectSort('最早优先','created_at','asc')" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">最早优先</div>
-              <div onclick="selectSort('金额高→低','amount','desc')" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">金额高→低</div>
-              <div onclick="selectSort('金额低→高','amount','asc')" class="dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg mx-1">金额低→高</div>
+            <div class="hidden absolute top-full left-0 mt-1 w-28 bg-white rounded-lg border border-gray-200 shadow-lg z-30 py-1">
+              <div onclick="selectSort('最新优先','created_at','desc')" class="dropdown-item px-2.5 py-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded-md mx-1">最新优先</div>
+              <div onclick="selectSort('最早优先','created_at','asc')" class="dropdown-item px-2.5 py-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded-md mx-1">最早优先</div>
+              <div onclick="selectSort('金额高→低','amount','desc')" class="dropdown-item px-2.5 py-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded-md mx-1">金额高→低</div>
+              <div onclick="selectSort('金额低→高','amount','asc')" class="dropdown-item px-2.5 py-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded-md mx-1">金额低→高</div>
             </div>
           </div>
         </div>
@@ -756,7 +756,7 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script async src="https://lf-scm-cn.feishucdn.com/lark/op/h5-js-sdk-1.5.44.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script defer src="app.js?v=20260610e"></script>
+<script defer src="app.js?v=20260610f"></script>
 
 <!-- 批量导入产品弹窗 -->
 <div id="modal-batch-product" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/30" style="z-index:60">
