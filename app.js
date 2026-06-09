@@ -1127,7 +1127,7 @@ function renderOrders() {
           ${cur !== 'USD' ? `<span class="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">${cur}</span>` : ''}
           ${distTag}
         </div>
-        <span class="text-sm text-gray-700 font-semibold">${(o.created_at || '').slice(0, 10)}</span>
+        <span class="text-sm text-gray-700 font-semibold">${(o.order_date || o.created_at || '').slice(0, 10)}</span>
       </div>
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mb-3">
         <span><svg class="w-3.5 h-3.5 inline-block mr-0.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>${esc(o.customer_name)}</span>
@@ -1283,8 +1283,9 @@ async function openOrderModal(id) {
       _settlementCurrency = o.settlement_currency || 'USD';
       document.getElementById('order-settlement-currency').value = _settlementCurrency;
       _orderExchangeRate = o.exchange_rate || 1;
-      // 回填订单日期（取 created_at 的日期部分）
-      if (o.created_at) document.getElementById('order-date').value = o.created_at.slice(0, 10);
+      // 回填订单日期（优先取 order_date，兼容旧数据回退 created_at）
+      const orderDate = o.order_date || (o.created_at || '').slice(0, 10);
+      if (orderDate) document.getElementById('order-date').value = orderDate;
       document.getElementById('order-tracking-row').classList.toggle('hidden', o.status !== 'shipped');
       document.getElementById('order-owner-select').value = o.owner_name || '';
       let items = allOrderItems.filter(i => i.order_id === id);
