@@ -1669,7 +1669,7 @@ function exportOrders(format) {
     const items = allOrderItems.filter(i => i.order_id === o.id);
     const detail = items.map(i => { const p = allProducts.find(x => x.id === i.product_id); const spec = p && p.sku ? ' ' + p.sku : ''; return (p ? p.name + spec : '') + '×' + i.quantity; }).join('; ');
     const total = items.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0);
-    return [o.order_no, o.customer_name, o.customer_phone || '', o.country || '', o.customer_address || '', detail, total.toFixed(2), statusText(o.status), (o.created_at || '').slice(0, 10)];
+    return [o.order_no, o.customer_name, o.customer_phone || '', o.country || '', o.customer_address || '', detail, total.toFixed(2), statusText(o.status), (o.order_date || o.created_at || '').slice(0, 10)];
   });
 
   if (format === 'copy') {
@@ -3110,7 +3110,7 @@ function exportShippingSheet(format) {
       const spec = p && p.sku ? ' ' + p.sku : '';
       return (p ? p.name + spec : '未知产品') + '×' + i.quantity;
     }).join('; ');
-    return [o.order_no, o.customer_name, o.customer_phone || '', o.country || '', o.customer_address || '', detail, (o.created_at || '').slice(0, 10)];
+    return [o.order_no, o.customer_name, o.customer_phone || '', o.country || '', o.customer_address || '', detail, (o.order_date || o.created_at || '').slice(0, 10)];
   });
 
   if (format === 'copy') {
