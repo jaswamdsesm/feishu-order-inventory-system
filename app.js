@@ -2407,8 +2407,8 @@ function quoteFindByNameOrCode(input) {
   }
 
   // ===== 第三步：编辑距离匹配 =====
-  // 阈值：输入≤3字符时为1，否则为2（避免短输入误匹配太多）
-  const editThreshold = kw.length <= 3 ? 1 : 2;
+  // 阈值：输入≤3字符为1；4-7字符为2；≥8字符为3（长单词容忍更多拼写错误）
+  const editThreshold = kw.length <= 3 ? 1 : kw.length >= 8 ? 3 : 2;
   const editResults = QUOTE_PRODUCTS.map(p => {
     const ns = normalizeStr(p.name);
     const cs = normalizeStr(p.code);
