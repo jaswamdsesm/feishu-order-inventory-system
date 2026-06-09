@@ -1054,8 +1054,8 @@ function renderOrders() {
   if (ownerFilter) filtered = filtered.filter(o => o.owner_name === ownerFilter);
   if (countryFilter) filtered = filtered.filter(o => (o.country || '').toLowerCase().includes(countryFilter));
   if (kw) filtered = filtered.filter(o => (o.order_no || '').toLowerCase().includes(kw) || (o.customer_name || '').toLowerCase().includes(kw));
-  if (dateFrom) filtered = filtered.filter(o => (o.created_at || '').slice(0, 10) >= dateFrom);
-  if (dateTo) filtered = filtered.filter(o => (o.created_at || '').slice(0, 10) <= dateTo);
+  if (dateFrom) filtered = filtered.filter(o => ((o.order_date || o.created_at || '').slice(0, 10)) >= dateFrom);
+  if (dateTo) filtered = filtered.filter(o => ((o.order_date || o.created_at || '').slice(0, 10)) <= dateTo);
   // 分销筛选
   if (distFilter) {
     const distNames = new Set(allDistributionRelations.filter(r => r.status === 'active').map(r => (r.referred_customer_name || '').trim().toLowerCase()));
