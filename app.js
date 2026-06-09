@@ -946,7 +946,7 @@ function resetOrderFilters() {
   document.getElementById('order-owner-filter').value = '';
   selectDropdown('order-status-dropdown', '全部状态', '');
   selectDropdown('order-dist-dropdown', '全部', '');
-  selectDropdown('order-sort-dropdown', '下单时间 ↓', 'created_at');
+  selectDropdown('order-sort-dropdown', '最新优先', 'created_at');
   document.getElementById('order-sort-dropdown').dataset.sortDir = 'desc';
   renderOrders();
 }
