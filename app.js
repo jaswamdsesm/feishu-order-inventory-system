@@ -1379,6 +1379,15 @@ function addOrderItemRow(existing) {
         searchInput.value = p
           ? (p.short_name ? `${p.name}（${p.short_name}）` : `${p.name}${p.sku ? '（' + p.sku + '）' : ''}`)
           : '';
+        // 自动填入当前价格体系的单价
+        const priceEl = document.getElementById(`item-price-${idx}`);
+        if (priceEl && p) {
+          // 通过 SKU / code 匹配 QUOTE_PRODUCTS
+          const skuKw = normalizeStr(p.sku || p.name);
+          let qp = QUOTE_PRODUCTS.find(x => normalizeStr(x.code) === skuKw);
+          if (!qp) qp = QUOTE_PRODUCTS.find(x => normalizeStr(x.code) === normalizeStr(p.short_name || ''));
+          if (qp && parseFloat(priceEl.value) === 0) priceEl.value = getActivePrice(qp);
+        }
         dropEl.classList.add('hidden');
       });
     });
@@ -4241,13 +4250,14 @@ async function autoQuoteOrder() {
     if (!hit) { skipped++; continue; }
     const priceInput = document.getElementById(`item-price-${idx}`);
     if (priceInput) {
-      priceInput.value = hit.price;
+      priceInput.value = getActivePrice(hit);
       filled++;
     }
   }
   recalcOrderTotal();
   if (filled > 0) {
-    let msg = `已自动填充 ${filled} 个产品单价`;
+    const schemeName = activePriceScheme ? `【${activePriceScheme.name}】` : '【内置价格】';
+    let msg = `已自动填充 ${filled} 个产品单价 ${schemeName}`;
     if (skipped > 0) msg += `，${skipped} 个未匹配`;
     showToast(msg, 'success');
   } else {
