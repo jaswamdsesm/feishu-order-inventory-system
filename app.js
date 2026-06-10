@@ -1445,6 +1445,8 @@ async function saveOrder() {
   const ownerName = document.getElementById('order-owner-select')?.value || '';
   const remark = document.getElementById('order-remark').value.trim();
   if (!name || !phone || !addr) { showToast('请填写客户姓名、联系电话和收货地址', 'warning'); return; }
+  // 强制选择价格体系
+  if (!orderFormSchemeId) { showToast('请选择价格体系（或"手动优惠报价"）', 'warning'); btn.disabled = false; btn.textContent = '保存订单'; return; }
   const itemRows = document.querySelectorAll('#order-items-container > div');
   const items = [];
   for (let i = 0; i < itemRows.length; i++) {
@@ -1537,7 +1539,7 @@ async function saveOrder() {
       p_shipping_cny: parseFloat(shippingCNY.toFixed(2)),
       p_handling_cny: parseFloat(handlingCNY.toFixed(2)),
       p_owner_name: ownerName || null,
-      p_price_scheme_id: orderFormSchemeId || null
+      p_price_scheme_id: orderFormSchemeId === 'manual' ? null : orderFormSchemeId
     });
     if (error) throw error;
     closeModal('modal-order');
@@ -2687,7 +2689,10 @@ function getActivePrice(p) {
 
 // ============ 订单弹窗价格体系 ============
 // 获取产品在订单弹窗所选价格体系下的价格
+// 返回 null 时表示手动模式，自动报价应跳过该行
 function getOrderFormPrice(p) {
+  // 手动优惠报价模式：不自动填价，允许手动输入
+  if (orderFormSchemeId === 'manual') return null;
   if (orderFormSchemeId && orderFormSchemePrices[p.code] != null) {
     return orderFormSchemePrices[p.code];
   }
@@ -2704,6 +2709,13 @@ async function onOrderPriceSchemeChange() {
   if (!schemeId) {
     orderFormSchemePrices = {};
     tag.classList.add('hidden');
+    return;
+  }
+  // 手动优惠报价模式
+  if (schemeId === 'manual') {
+    orderFormSchemePrices = {};
+    tag.textContent = '手动优惠报价';
+    tag.classList.remove('hidden');
     return;
   }
   try {
@@ -2724,30 +2736,39 @@ async function onOrderPriceSchemeChange() {
 }
 
 // 打开订单弹窗时，填充价格体系下拉
+// forceSelect: 是否强制必须选（新增订单时 true，编辑时还原已有值）
 async function populateOrderPriceScheme(orderSchemeId) {
   const sel = document.getElementById('order-price-scheme');
   if (!sel) return;
   // 确保价格体系数据已加载
   await loadPriceSchemes();
-  // 每次重建下拉选项
-  sel.innerHTML = '<option value="">内置价格</option>';
+  // 每次重建下拉选项（不含"内置价格"）
+  sel.innerHTML = '';
+  // "手动优惠报价"特殊选项
+  const manualOpt = document.createElement('option');
+  manualOpt.value = 'manual';
+  manualOpt.textContent = '🖊️ 手动优惠报价';
+  sel.appendChild(manualOpt);
+  // 正常价格体系
   allPriceSchemes.forEach(s => {
     const opt = document.createElement('option');
     opt.value = s.id;
     opt.textContent = s.name;
     sel.appendChild(opt);
   });
-  sel.value = orderSchemeId || '';
-  // 触发一次加载
+  // 确定应选中哪项
+  let targetValue = null;
   if (orderSchemeId) {
-    orderFormSchemeId = orderSchemeId;
-    onOrderPriceSchemeChange();
+    // 编辑模式：还原已有值
+    targetValue = orderSchemeId;
   } else {
-    orderFormSchemeId = null;
-    orderFormSchemePrices = {};
-    const tag = document.getElementById('order-scheme-tag');
-    if (tag) tag.classList.add('hidden');
+    // 新增模式：默认选中第一项（手动优惠报价），强制用户主动选择
+    targetValue = 'manual';
   }
+  sel.value = targetValue;
+  // 触发加载
+  orderFormSchemeId = targetValue;
+  await onOrderPriceSchemeChange();
 }
 // ============ 订单弹窗价格体系 END ============
 
@@ -4278,6 +4299,11 @@ async function autoQuoteOrder() {
   if (!container) return;
   const rows = container.querySelectorAll('div[id^="item-row-"]');
   if (rows.length === 0) { showToast('请先添加产品', 'warning'); return; }
+  // 手动优惠报价模式：提示用户手动填价
+  if (orderFormSchemeId === 'manual') {
+    showToast('当前为「手动优惠报价」模式，请直接手动填写单价', 'warning');
+    return;
+  }
   let filled = 0, skipped = 0;
   for (const row of rows) {
     const idx = row.id.replace('item-row-', '');
@@ -4324,14 +4350,19 @@ async function autoQuoteOrder() {
     if (!hit) { skipped++; continue; }
     const priceInput = document.getElementById(`item-price-${idx}`);
     if (priceInput) {
-      priceInput.value = getOrderFormPrice(hit);
-      filled++;
+      const price = getOrderFormPrice(hit);
+      if (price != null) {
+        priceInput.value = price;
+        filled++;
+      } else {
+        skipped++;
+      }
     }
   }
   recalcOrderTotal();
   if (filled > 0) {
     const sel = document.getElementById('order-price-scheme');
-    const schemeName = sel && sel.value ? `【${sel.options[sel.selectedIndex]?.text || '已选体系'}】` : '【内置价格】';
+    const schemeName = sel && sel.value ? `【${sel.options[sel.selectedIndex]?.text || '已选体系'}】` : '';
     let msg = `已自动填充 ${filled} 个产品单价 ${schemeName}`;
     if (skipped > 0) msg += `，${skipped} 个未匹配`;
     showToast(msg, 'success');
