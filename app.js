@@ -2724,19 +2724,19 @@ async function onOrderPriceSchemeChange() {
 }
 
 // 打开订单弹窗时，填充价格体系下拉
-function populateOrderPriceScheme(orderSchemeId) {
+async function populateOrderPriceScheme(orderSchemeId) {
   const sel = document.getElementById('order-price-scheme');
   if (!sel) return;
-  // 只填充一次（options 长度 > 1 说明已填充）
-  if (sel.options.length <= 1) {
-    sel.innerHTML = '<option value="">内置价格</option>';
-    allPriceSchemes.forEach(s => {
-      const opt = document.createElement('option');
-      opt.value = s.id;
-      opt.textContent = s.name;
-      sel.appendChild(opt);
-    });
-  }
+  // 确保价格体系数据已加载
+  await loadPriceSchemes();
+  // 每次重建下拉选项
+  sel.innerHTML = '<option value="">内置价格</option>';
+  allPriceSchemes.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name;
+    sel.appendChild(opt);
+  });
   sel.value = orderSchemeId || '';
   // 触发一次加载
   if (orderSchemeId) {
