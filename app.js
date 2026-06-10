@@ -406,6 +406,9 @@ let currentProfileId = '';  // 当前用户的 profile UUID，供订单权限过
 let currentPage = 'dashboard', pageRefreshTimers = {}, editingOrderId = null, orderItemCounter = 0;
 let allDistributionRelations = []; // 分销关系缓存
 let originalStock = 0;  // 编辑产品时记录原始库存，用于写变动日志
+// 订单弹窗内价格体系（独立于全局 activePriceScheme）
+let orderFormSchemeId = null;
+let orderFormSchemePrices = {}; // {product_code: price}
 
 // ============ 价格体系 ============
 let allPriceSchemes = [];           // 所有体系 [{id, name, description, is_default}]
@@ -1301,6 +1304,8 @@ async function openOrderModal(id) {
       if (orderDate) document.getElementById('order-date').value = orderDate;
       document.getElementById('order-tracking-row').classList.toggle('hidden', o.status !== 'shipped');
       document.getElementById('order-owner-select').value = o.owner_name || '';
+      // 回填价格体系
+      await populateOrderPriceScheme(o.price_scheme_id || null);
       let items = allOrderItems.filter(i => i.order_id === id);
       // 如果 order_items 表没有数据，回退到 orders.items JSONB 字段
       if (items.length === 0 && o.items && Array.isArray(o.items)) {
@@ -1330,6 +1335,7 @@ async function openOrderModal(id) {
     document.getElementById('order-remark').value = '';
     document.getElementById('order-shipping-fee').value = '';
     document.getElementById('order-payment-method').value = '';
+    await populateOrderPriceScheme(null);
     addOrderItemRow();
   }
   // 加载汇率后重新计算
@@ -1386,7 +1392,7 @@ function addOrderItemRow(existing) {
           const skuKw = normalizeStr(p.sku || p.name);
           let qp = QUOTE_PRODUCTS.find(x => normalizeStr(x.code) === skuKw);
           if (!qp) qp = QUOTE_PRODUCTS.find(x => normalizeStr(x.code) === normalizeStr(p.short_name || ''));
-          if (qp && parseFloat(priceEl.value) === 0) priceEl.value = getActivePrice(qp);
+          if (qp && parseFloat(priceEl.value) === 0) priceEl.value = getOrderFormPrice(qp);
         }
         dropEl.classList.add('hidden');
       });
@@ -1530,7 +1536,8 @@ async function saveOrder() {
       p_goods_cny: parseFloat(goodsCNY.toFixed(2)),
       p_shipping_cny: parseFloat(shippingCNY.toFixed(2)),
       p_handling_cny: parseFloat(handlingCNY.toFixed(2)),
-      p_owner_name: ownerName || null
+      p_owner_name: ownerName || null,
+      p_price_scheme_id: orderFormSchemeId || null
     });
     if (error) throw error;
     closeModal('modal-order');
@@ -1581,7 +1588,8 @@ async function markDelivered(id) {
       p_total_cny: o.total_cny || 0,
       p_goods_cny: o.goods_cny || 0,
       p_shipping_cny: o.shipping_cny || 0,
-      p_handling_cny: o.handling_cny || 0
+      p_handling_cny: o.handling_cny || 0,
+      p_price_scheme_id: o.price_scheme_id || null
     });
     if (error) throw error;
     o.status = 'completed';
@@ -2676,6 +2684,72 @@ function getActivePrice(p) {
   }
   return p.price; // 回退到内置价格
 }
+
+// ============ 订单弹窗价格体系 ============
+// 获取产品在订单弹窗所选价格体系下的价格
+function getOrderFormPrice(p) {
+  if (orderFormSchemeId && orderFormSchemePrices[p.code] != null) {
+    return orderFormSchemePrices[p.code];
+  }
+  // 回退：弹窗有选体系但该产品没定价 → 用全局体系 → 内置价
+  return getActivePrice(p);
+}
+
+// 订单弹窗价格体系下拉变化
+async function onOrderPriceSchemeChange() {
+  const sel = document.getElementById('order-price-scheme');
+  const tag = document.getElementById('order-scheme-tag');
+  const schemeId = sel.value || null;
+  orderFormSchemeId = schemeId;
+  if (!schemeId) {
+    orderFormSchemePrices = {};
+    tag.classList.add('hidden');
+    return;
+  }
+  try {
+    const { data, error } = await sb.from('price_scheme_items')
+      .select('product_code,price')
+      .eq('scheme_id', schemeId);
+    if (error) throw error;
+    orderFormSchemePrices = {};
+    (data || []).forEach(row => { orderFormSchemePrices[row.product_code] = parseFloat(row.price); });
+    const scheme = allPriceSchemes.find(s => s.id === schemeId);
+    tag.textContent = scheme ? scheme.name : '';
+    tag.classList.remove('hidden');
+  } catch(e) {
+    console.warn('onOrderPriceSchemeChange error', e);
+    orderFormSchemePrices = {};
+    tag.classList.add('hidden');
+  }
+}
+
+// 打开订单弹窗时，填充价格体系下拉
+function populateOrderPriceScheme(orderSchemeId) {
+  const sel = document.getElementById('order-price-scheme');
+  if (!sel) return;
+  // 只填充一次（options 长度 > 1 说明已填充）
+  if (sel.options.length <= 1) {
+    sel.innerHTML = '<option value="">内置价格</option>';
+    allPriceSchemes.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.name;
+      sel.appendChild(opt);
+    });
+  }
+  sel.value = orderSchemeId || '';
+  // 触发一次加载
+  if (orderSchemeId) {
+    orderFormSchemeId = orderSchemeId;
+    onOrderPriceSchemeChange();
+  } else {
+    orderFormSchemeId = null;
+    orderFormSchemePrices = {};
+    const tag = document.getElementById('order-scheme-tag');
+    if (tag) tag.classList.add('hidden');
+  }
+}
+// ============ 订单弹窗价格体系 END ============
 
 // 报价产品行格式化（统一处理 alias 显示，支持多价格体系）
 function formatQuoteProduct(p, qty) {
@@ -4250,13 +4324,14 @@ async function autoQuoteOrder() {
     if (!hit) { skipped++; continue; }
     const priceInput = document.getElementById(`item-price-${idx}`);
     if (priceInput) {
-      priceInput.value = getActivePrice(hit);
+      priceInput.value = getOrderFormPrice(hit);
       filled++;
     }
   }
   recalcOrderTotal();
   if (filled > 0) {
-    const schemeName = activePriceScheme ? `【${activePriceScheme.name}】` : '【内置价格】';
+    const sel = document.getElementById('order-price-scheme');
+    const schemeName = sel && sel.value ? `【${sel.options[sel.selectedIndex]?.text || '已选体系'}】` : '【内置价格】';
     let msg = `已自动填充 ${filled} 个产品单价 ${schemeName}`;
     if (skipped > 0) msg += `，${skipped} 个未匹配`;
     showToast(msg, 'success');
