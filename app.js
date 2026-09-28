@@ -2256,7 +2256,7 @@ const QUOTE_PRODUCTS = [
   { name:'HCG', code:'HCG10000', spec:'10000iu*10vials', price:150 },
   { name:'KPV', code:'KP5', spec:'5mg*10vials', price:50 },
   { name:'KPV', code:'KP10', spec:'10mg*10vials', price:88 },
-  { name:'PT-141', code:'P41', spec:'10mg*10vials', price:63 },
+  { name:'PT-141', code:'PT10', spec:'10mg*10vials', price:63 },
   { name:'Epithalon', code:'EPI10', spec:'10mg*10vials', price:53 },
   { name:'Epithalon', code:'EPI50', spec:'50mg*10vials', price:173 },
   { name:'Pinealon', code:'PN10', spec:'10mg*10vials', price:98 },
