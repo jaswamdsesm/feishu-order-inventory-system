@@ -2572,10 +2572,52 @@ function renderQuoteResult(lines) {
 }
 
 // ============ 主搜索入口 ============
+// 分栏输入：每行 = 名称/简称 + 盒数，盒数必填
+function addQuoteEntry(name, qty) {
+  const wrap = document.getElementById('quote-entries');
+  if (!wrap) return;
+  const row = document.createElement('div');
+  row.className = 'quote-entry-row flex gap-2 items-center';
+  row.innerHTML = `
+    <input type="text" class="q-name flex-1 px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm" placeholder="如：5AD、RT5、BPC157+TB500" value="${name ? escHtml(String(name)) : ''}">
+    <input type="number" min="1" step="1" class="q-qty w-24 px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm text-center" placeholder="盒数" value="${qty || ''}" onkeydown="if(event.key==='Enter')handleQuoteSearch()">
+    <button onclick="removeQuoteEntry(this)" class="w-8 text-sm px-1 py-2 rounded-lg text-red-400 hover:bg-red-50 transition-colors">✕</button>
+  `;
+  wrap.appendChild(row);
+}
+
+function removeQuoteEntry(btn) {
+  const row = btn.closest('.quote-entry-row');
+  if (row) row.remove();
+  // 至少保留一行
+  const wrap = document.getElementById('quote-entries');
+  if (wrap && wrap.querySelectorAll('.quote-entry-row').length === 0) addQuoteEntry();
+}
+
+function getQuoteEntryData() {
+  const rows = [...document.querySelectorAll('#quote-entries .quote-entry-row')];
+  const entries = [];
+  for (const row of rows) {
+    const nameEl = row.querySelector('.q-name');
+    const qtyEl = row.querySelector('.q-qty');
+    const name = nameEl ? nameEl.value.trim() : '';
+    const qty = qtyEl ? parseInt(qtyEl.value, 10) : NaN;
+    entries.push({ row, name, qty });
+  }
+  return entries;
+}
+
 function handleQuoteSearch() {
-  const input = document.getElementById('quote-input').value.trim();
-  if (!input) return;
-  const result = parseQuoteInput(input);
+  const entries = getQuoteEntryData();
+  const queries = [];
+  for (const e of entries) {
+    if (!e.name && (isNaN(e.qty) || e.qty <= 0)) continue; // 完全空行跳过
+    if (!e.name) { showToast('有条目未填写名称/简称', 'warning'); return; }
+    if (isNaN(e.qty) || e.qty < 1) { showToast(`「${e.name}」未填写盒数，不填盒数不能查询`, 'warning'); return; }
+    queries.push(`${e.name} X ${e.qty}`);
+  }
+  if (queries.length === 0) { showToast('请至少填写一条产品（名称+盒数）', 'warning'); return; }
+  const result = parseQuoteInput(queries.join('\n'));
   const el = document.getElementById('quote-result');
   renderQuoteResult(result);
   // 查询完自动显示货物价格汇总（USD）
@@ -3147,9 +3189,12 @@ function addQuoteHistory(products) {
 
 function resetQuote() {
   quoteHistory = [];
-  const input = document.getElementById('quote-input');
-  if (input) input.value = '';
-  document.getElementById('quote-result').innerHTML = '<div class="text-center text-sm text-gray-300 mt-12">请输入询价内容<br><span class="text-xs text-gray-400 mt-2 block">支持：产品名、代码、数量询价、复合产品</span></div>';
+  const wrap = document.getElementById('quote-entries');
+  if (wrap) {
+    wrap.innerHTML = '';
+    addQuoteEntry();
+  }
+  document.getElementById('quote-result').innerHTML = '<div class="text-center text-sm text-gray-300 mt-12">请输入询价内容<br><span class="text-xs text-gray-400 mt-2 block">每行填：名称/简称 + 盒数（盒数必填）</span></div>';
   showToast('已重置', 'success');
 }
 
@@ -3182,14 +3227,20 @@ function copyQuoteResult() {
 function renderQuotePage() {
   const el = document.getElementById('quote-result');
   if (el && (!el.innerHTML || el.innerHTML.includes('请输入询价内容'))) {
-    el.innerHTML = '<div class="text-center text-sm text-gray-300 mt-12">请输入询价内容<br><span class="text-xs text-gray-400 mt-2 block">支持：产品名、代码、数量询价、复合产品</span></div>';
+    el.innerHTML = '<div class="text-center text-sm text-gray-300 mt-12">请输入询价内容<br><span class="text-xs text-gray-400 mt-2 block">每行填：名称/简称 + 盒数（盒数必填）</span></div>';
   }
+  // 分栏输入：确保至少有一行
+  const wrap = document.getElementById('quote-entries');
+  if (wrap && wrap.querySelectorAll('.quote-entry-row').length === 0) addQuoteEntry();
 }
 
 // ============ 启动 ============
 document.addEventListener('DOMContentLoaded', function() {
   const qtyInput = document.getElementById('batch-stock-qty');
   if (qtyInput) qtyInput.addEventListener('input', renderBatchStockPreview);
+  // 报价助手：默认一行空条目
+  const quoteWrap = document.getElementById('quote-entries');
+  if (quoteWrap && quoteWrap.querySelectorAll('.quote-entry-row').length === 0) addQuoteEntry();
 });
 function populateOwnerSelects() {
   const filterSel = document.getElementById('order-owner-filter');
@@ -3351,9 +3402,9 @@ async function onSchemeChange() {
   if (!el) return;
   const id = el.value;
   await switchPriceScheme(id || null);
-  // 刷新报价结果
-  const inputEl = document.getElementById('quote-input');
-  if (inputEl && inputEl.value.trim()) handleQuoteSearch();
+  // 刷新报价结果（分栏模式下：任一条目有内容即刷新）
+  const entries = getQuoteEntryData();
+  if (entries.some(e => e.name && e.qty >= 1)) handleQuoteSearch();
 }
 
 // ========== 价格体系管理页 ==========
