@@ -2579,7 +2579,7 @@ function addQuoteEntry(name, qty) {
   const row = document.createElement('div');
   row.className = 'quote-entry-row flex gap-2 items-center';
   row.innerHTML = `
-    <input type="text" class="q-name w-32 px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm" placeholder="如：5AD、RT5、BPC157+TB500" value="${name ? escHtml(String(name)) : ''}">
+    <input type="text" class="q-name w-[200px] px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm" placeholder="如：5AD、RT5、BPC157+TB500" value="${name ? escHtml(String(name)) : ''}">
     <input type="number" min="1" step="1" class="q-qty w-24 px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm text-center" placeholder="盒数" value="${qty || ''}" onkeydown="if(event.key==='Enter')handleQuoteSearch()">
     <button onclick="removeQuoteEntry(this)" class="w-8 text-sm px-1 py-2 rounded-lg text-red-400 hover:bg-red-50 transition-colors">✕</button>
   `;
