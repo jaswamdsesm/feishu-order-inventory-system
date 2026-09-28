@@ -297,11 +297,16 @@ html.dark .hover\:bg-gray-50:hover{background:#2a2a40 !important}
           </select>
           <button onclick="switchPage('price-schemes')" class="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-500 transition-colors whitespace-nowrap">管理体系</button>
         </div>
-        <div class="flex gap-2">
-          <textarea id="quote-input" rows="3" placeholder="输入询价内容，每行一个，如：&#10;RT&#10;RT5 x3&#10;BPC157+TB500&#10;NAD+ 1000mg X 3" class="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm resize-none"></textarea>
-          <button onclick="handleQuoteSearch()" class="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-xl font-medium whitespace-nowrap">查询</button>
+        <!-- 分栏输入：名称/简称 + 盒数 -->
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-xs text-gray-500 flex-1">名称 / 简称 / 代码</span>
+          <span class="text-xs text-gray-500 w-24 text-center">盒数 *</span>
+          <span class="text-xs text-gray-500 w-8"></span>
         </div>
+        <div id="quote-entries" class="space-y-2"></div>
         <div class="flex gap-2 mt-2 flex-wrap">
+          <button onclick="addQuoteEntry()" class="text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors">+ 新增条目</button>
+          <button onclick="handleQuoteSearch()" class="text-xs px-5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors">查询</button>
           <button onclick="copyQuoteResult()" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">复制结果</button>
           <button onclick="resetQuote()" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-red-500">重置</button>
           <div class="relative inline-block" id="currency-dropdown-wrap">
