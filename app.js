@@ -2249,7 +2249,7 @@ const QUOTE_PRODUCTS = [
   { name:'HGH 191AA', code:'H24', spec:'24iu*10vials', price:120 },
   { name:'HGH 191AA', code:'H36', spec:'36iu*10vials', price:162 },
   { name:'AOD9604', code:'5AD', spec:'5mg*10vials', price:96 },
-  { name:'AOD9604', code:'AD10', spec:'10mg*10vials', price:168 },
+  { name:'AOD9604', code:'10AD', spec:'10mg*10vials', price:168 },
   { name:'IGF-1LR3', code:'IGF-01', spec:'0.1mg*10vials', price:35 },
   { name:'IGF-1LR3', code:'IGF-1', spec:'1mg*10vials', price:147 },
   { name:'HCG', code:'G5K', spec:'5000iu*10vials', price:92 },
