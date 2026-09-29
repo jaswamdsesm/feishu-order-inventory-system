@@ -2584,6 +2584,68 @@ function addQuoteEntry(name, qty) {
     <button onclick="removeQuoteEntry(this)" class="w-8 text-sm px-1 py-2 rounded-lg text-red-400 hover:bg-red-50 transition-colors">✕</button>
   `;
   wrap.appendChild(row);
+  // 名称框支持直接粘贴多行，自动拆分成多条
+  const nameInput = row.querySelector('.q-name');
+  nameInput.addEventListener('paste', (e) => {
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    if (!text || !text.includes('\\n')) return;
+    e.preventDefault();
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return;
+    const parsed = lines.map(parseBatchLine).filter(Boolean);
+    if (!parsed.length) return;
+    nameInput.value = parsed[0].name;
+    const qtyInput = row.querySelector('.q-qty');
+    if (parsed[0].qty) qtyInput.value = parsed[0].qty;
+    for (let i = 1; i < parsed.length; i++) addQuoteEntry(parsed[i].name, parsed[i].qty);
+    showToast(`已粘贴 ${parsed.length} 条，请核对盒数`, 'success');
+  });
+}
+
+// ============ 批量粘贴（多项输入） ============
+// 每行一条；盒数需带明确标记：x3 / X3 / ×3 / *3 / 3盒，否则整行作为名称、盒数留空
+function parseBatchLine(line) {
+  line = line.trim();
+  if (!line) return null;
+  let m = line.match(/^(.+?)[\s]+[xX×*][\s]*(\d+)\s*(?:盒|box|boxes)?\s*$/);
+  if (m) return { name: m[1].trim(), qty: parseInt(m[2], 10) };
+  m = line.match(/^(.+?)[\s]+(\d+)\s*(?:盒|box|boxes)\s*$/);
+  if (m) return { name: m[1].trim(), qty: parseInt(m[2], 10) };
+  return { name: line, qty: null };
+}
+
+function batchPasteQuote() {
+  const old = document.getElementById('quote-batch-modal');
+  if (old) old.remove();
+  const backdrop = document.createElement('div');
+  backdrop.id = 'quote-batch-modal';
+  backdrop.className = 'modal-backdrop active';
+  backdrop.innerHTML = `
+    <div class="bg-white rounded-2xl p-5 w-[92%] max-w-lg">
+      <p class="font-bold mb-1">批量粘贴</p>
+      <p class="text-xs text-gray-400 mb-3 leading-relaxed">每行一条，名称在前、盒数在后。<br>盒数需带标记：<b>x3</b> / <b>×3</b> / <b>*3</b> / <b>3盒</b>，不带标记则盒数留空待填。<br>示例：5AD x3、GHK 50 5盒、BPC157+TB500 *2</p>
+      <textarea id="quote-batch-text" class="w-full h-40 px-3 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="5AD x3&#10;RT5 5盒&#10;BPC157+TB500 *2"></textarea>
+      <div class="flex gap-2 mt-3 justify-end">
+        <button onclick="document.getElementById('quote-batch-modal').remove()" class="text-xs px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500">取消</button>
+        <button onclick="applyBatchPaste()" class="text-xs px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium">填入条目</button>
+      </div>
+    </div>`;
+  document.body.appendChild(backdrop);
+}
+
+function applyBatchPaste() {
+  const ta = document.getElementById('quote-batch-text');
+  if (!ta) return;
+  const lines = ta.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const parsed = lines.map(parseBatchLine).filter(Boolean);
+  if (!parsed.length) { showToast('未识别到有效条目', 'warning'); return; }
+  // 清空现有条目后填入
+  const wrap = document.getElementById('quote-entries');
+  if (wrap) wrap.innerHTML = '';
+  parsed.forEach(p => addQuoteEntry(p.name, p.qty));
+  const modal = document.getElementById('quote-batch-modal');
+  if (modal) modal.remove();
+  showToast(`已填入 ${parsed.length} 条，请核对盒数`, 'success');
 }
 
 function removeQuoteEntry(btn) {
