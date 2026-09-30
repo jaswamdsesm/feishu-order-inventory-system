@@ -2611,7 +2611,7 @@ function parseBatchLine(line) {
   if (m) return { name: m[1].trim(), qty: parseInt(m[2], 10) };
   m = line.match(/^(.+?)[\s]+(\d+)\s*(?:盒|box|boxes)\s*$/);
   if (m) return { name: m[1].trim(), qty: parseInt(m[2], 10) };
-  return { name: line, qty: null };
+  return { name: line, qty: 1 }; // 不带盒数标记时默认 1 盒
 }
 
 function batchPasteQuote() {
@@ -2623,7 +2623,7 @@ function batchPasteQuote() {
   backdrop.innerHTML = `
     <div class="bg-white rounded-2xl p-5 w-[92%] max-w-lg">
       <p class="font-bold mb-1">批量粘贴</p>
-      <p class="text-xs text-gray-400 mb-3 leading-relaxed">每行一条，名称在前、盒数在后。<br>盒数需带标记：<b>x3</b> / <b>×3</b> / <b>*3</b> / <b>3盒</b>，不带标记则盒数留空待填。<br>示例：5AD x3、GHK 50 5盒、BPC157+TB500 *2</p>
+      <p class="text-xs text-gray-400 mb-3 leading-relaxed">每行一条，名称在前、盒数在后。<br>盒数需带标记：<b>x3</b> / <b>×3</b> / <b>*3</b> / <b>3盒</b>，不带标记默认 1 盒。<br>示例：5AD x3、GHK 50 5盒、BPC157+TB500</p>
       <textarea id="quote-batch-text" class="w-full h-40 px-3 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="5AD x3&#10;RT5 5盒&#10;BPC157+TB500 *2"></textarea>
       <div class="flex gap-2 mt-3 justify-end">
         <button onclick="document.getElementById('quote-batch-modal').remove()" class="text-xs px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500">取消</button>
