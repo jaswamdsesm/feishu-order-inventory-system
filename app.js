@@ -2289,6 +2289,8 @@ const QUOTE_PRODUCTS = [
   { name:'PIN', code:'PIN10', spec:'10mg*10vials', price:47 },
   { name:'Tesamorelin+Ipamorelin', code:'TI13', spec:'13mg*10vials', price:0 },
   { name:'Tesamorelin+Ipamorelin', code:'TI16', spec:'16mg*10vials', price:0 },
+  { name:'Tesamorelin', code:'TSM20', spec:'20mg*10vials', price:0 },
+  { name:'MOTS-c', code:'MS20', spec:'20mg*10vials', price:0 },
 ];
 
 // 报价会话历史（用于导出报价单）
