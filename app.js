@@ -2291,6 +2291,21 @@ const QUOTE_PRODUCTS = [
   { name:'Tesamorelin+Ipamorelin', code:'TI16', spec:'16mg*10vials', price:0 },
   { name:'Tesamorelin', code:'TSM20', spec:'20mg*10vials', price:0 },
   { name:'MOTS-c', code:'MS20', spec:'20mg*10vials', price:0 },
+  // ===== 油剂 / 类固醇系列（2026-10-18 新增，价格需在价格体系页维护） =====
+  { name:'Testosterone Mix', code:'S250', spec:'10ml*250mg/ml*1vial', price:0 },
+  { name:'Testosterone Enanthate', code:'E250', spec:'10ml*250mg/ml*1vial', price:0 },
+  { name:'Testosterone Cypionate', code:'C250', spec:'10ml*250mg/ml*1vial', price:0 },
+  { name:'Testosterone Propionate', code:'P100', spec:'10ml*100mg/ml*1vial', price:0 },
+  { name:'Trenbolone Acetate', code:'R100', spec:'10ml*100mg/ml*1vial', price:0 },
+  { name:'Trenbolone Enanthate', code:'R200', spec:'10ml*200mg/ml*1vial', price:0 },
+  { name:'Boldenone Undecylenate', code:'U250', spec:'10ml*250mg/ml*1vial', price:0 },
+  { name:'Nandrolone Decanoate', code:'N250', spec:'10ml*250mg/ml*1vial', price:0 },
+  { name:'Nandrolone Decanoate', code:'N400', spec:'10ml*400mg/ml*1vial', price:0 },
+  { name:'Nandrolone Phenylpropionate', code:'PN100', spec:'10ml*100mg/ml*1vial', price:0 },
+  { name:'Methenolone Enanthate', code:'M100', spec:'10ml*100mg/ml*1vial', price:0 },
+  { name:'Methenolone Enanthate', code:'M200', spec:'10ml*200mg/ml*1vial', price:0 },
+  { name:'Drostanolone Propionate', code:'D100', spec:'10ml*100mg/ml*1vial', price:0 },
+  { name:'Drostanolone Enanthate', code:'D200', spec:'10ml*200mg/ml*1vial', price:0 },
 ];
 
 // 报价会话历史（用于导出报价单）
