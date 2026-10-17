@@ -2245,7 +2245,7 @@ const QUOTE_PRODUCTS = [
   { name:'CJC1295 with DAC', code:'CD5', spec:'5mg*10vials', price:135 },
   { name:'CJC1295 with DAC', code:'CD10', spec:'10mg*10vials', price:180 },
   { name:'HGH 191AA', code:'H10', spec:'10iu*10vials', price:65 },
-  { name:'HGH 191AA', code:'H12', spec:'12iu*10vials', price:76 },
+  { name:'HGH 191AA', code:'H15', spec:'15iu*10vials', price:76 },
   { name:'HGH 191AA', code:'H24', spec:'24iu*10vials', price:120 },
   { name:'HGH 191AA', code:'H36', spec:'36iu*10vials', price:162 },
   { name:'AOD9604', code:'5AD', spec:'5mg*10vials', price:96 },
