@@ -2306,6 +2306,7 @@ const QUOTE_PRODUCTS = [
   { name:'Methenolone Enanthate', code:'M200', spec:'10ml*200mg/ml*1vial', price:0 },
   { name:'Drostanolone Propionate', code:'D100', spec:'10ml*100mg/ml*1vial', price:0 },
   { name:'Drostanolone Enanthate', code:'D200', spec:'10ml*200mg/ml*1vial', price:0 },
+  { name:'Adipotide', code:'AP10', spec:'10mg*10vials', price:0 },
 ];
 
 // 报价会话历史（用于导出报价单）
